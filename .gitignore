@@ -1,0 +1,9 @@
+raylib-master
+_build
+_bin
+.vs
+*.exe
+*.bat
+*.lua
+*.osx
+premake5
