@@ -9,6 +9,8 @@
 const int screenWidth = W;
 const int screenHeight = W / 16 * 9;
 Camera2D playerCamera;
+ecs_query_t* _static_bodies_query;
+ecs_world_t* _world;
 //----------------------------------------------------------------------------------
 // Local Variables Definition (local to this module)
 //----------------------------------------------------------------------------------
@@ -42,10 +44,11 @@ int main(void)
 
 	// FLECS init
 	ecs_world_t* world = ecs_init();
+	_world = world;
 
 	ECS_COMPONENT(world, Player);
 	ECS_COMPONENT(world, Velocity);
-	ECS_COMPONENT(world, Positin);
+	ECS_COMPONENT(world, Position);
 	ECS_COMPONENT(world, Shape);
 	ECS_COMPONENT(world, ShapeColor);
 	ECS_COMPONENT(world, StaticBody);
@@ -55,7 +58,7 @@ int main(void)
 	ecs_entity_t* object = ecs_new_id(world);
 	ecs_set(world, object, Player, { 0 });
 	ecs_set(world, object, Velocity, { 0,0 });
-	ecs_set(world, object, Positin, { 150,150 });
+	ecs_set(world, object, Position, { 150,150 });
 	ecs_set(world, object, Shape, { RECTANGLE_SHAPE,BLOCK_SIZE,BLOCK_SIZE });
 	ecs_set(world, object, ShapeColor, { RED });
 	ecs_set(world, object, DynamicBody, { 0 });
@@ -75,19 +78,34 @@ int main(void)
 
 		int shape = RECTANGLE_SHAPE;
 
-		ecs_set(world, STATIC_BODIES[i], Positin, { x,y });
+		ecs_set(world, STATIC_BODIES[i], Position, { x,y });
 		ecs_set(world, STATIC_BODIES[i], Shape, { shape,BLOCK_SIZE,BLOCK_SIZE });
 		ecs_set(world, STATIC_BODIES[i], ShapeColor, { c });
 		ecs_set(world, STATIC_BODIES[i], StaticBody, { 0 });
 	}
 
+	_static_bodies_query = ecs_query(world, {
+		.filter.terms =
+		{
+			{
+				.id = ecs_id(Position)
+			},
+			{
+				.id = ecs_id(Shape)
+			},
+			{
+				.id = ecs_id(StaticBody)
+			}
+		} });
+
 	// SYSTEMS
 	ECS_SYSTEM(world, CheckUserInput, EcsPreUpdate, Player, Velocity, DynamicBody);
-	ECS_SYSTEM(world, ApplyVelocity, EcsOnUpdate, Velocity, Positin, DynamicBody);
-	ECS_SYSTEM(world, UpdatePlayerCamera, EcsPostUpdate, Positin, Shape, Player);
+	ECS_SYSTEM(world, ApplyVelocity, EcsOnUpdate, Velocity, Position, DynamicBody);
+	ECS_SYSTEM(world, CollisionDetection, EcsOnValidate, Position, Shape, DynamicBody);
+	ECS_SYSTEM(world, UpdatePlayerCamera, EcsPostUpdate, Position, Shape, Player);
 	ECS_SYSTEM(world, BeginRendering, EcsPreStore);
-	ECS_SYSTEM(world, RenderWorld, EcsOnStore, Positin, Shape, ShapeColor);
-	ECS_SYSTEM(world, RenderPosition, EcsOnStore, Positin, Shape);
+	ECS_SYSTEM(world, RenderWorld, EcsOnStore, Position, Shape, ShapeColor);
+	ECS_SYSTEM(world, RenderPosition, EcsOnStore, Position, Shape);
 	ECS_SYSTEM(world, EndRendering, EcsOnStore);
 #if defined(PLATFORM_WEB)
 	emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
@@ -152,15 +170,46 @@ void CheckUserInput(ecs_iter_t* it)
 
 void ApplyVelocity(ecs_iter_t* it)
 {
-	Velocity* velocity = ecs_field(it, Velocity, 1);
-	Positin* position = ecs_field(it, Positin, 2);
-	position->x += velocity->xVelocity;
-	position->y += velocity->yVelocity;
+	Velocity* velocityArray = ecs_field(it, Velocity, 1);
+	Position* positionArray = ecs_field(it, Position, 2);
+	for (int i = 0; i < it->count; i++)
+	{
+		Velocity* velocity = &velocityArray[i];
+		Position* position = &positionArray[i];
+		position->x += velocity->xVelocity;
+		position->y += velocity->yVelocity;
+	}
+}
+void CollisionDetection(ecs_iter_t* it)
+{
+	Position* dynamicPositionArray = ecs_field(it, Position, 1);
+	Shape* dynamicShapeArray = ecs_field(it, Shape, 2);
+
+	// Get all static bodies
+	ecs_iter_t static_bodies_iterator =
+		ecs_query_iter(_world, _static_bodies_query);
+
+	for (size_t i = 0; i < it->count; i++)
+	{
+		Position dynamicPosition = dynamicPositionArray[i];
+		Shape dynamicShape = dynamicShapeArray[i];
+
+		while (ecs_query_next(&static_bodies_iterator))
+		{
+			Position* staticPositionArray = ecs_field(&static_bodies_iterator, Position, 1);
+			Shape* staticShapeArray = ecs_field(&static_bodies_iterator, Shape, 2);
+
+			for (size_t ii = 0; ii < static_bodies_iterator.count; ii++)
+			{
+
+			}
+		}
+	}
 }
 
 void UpdatePlayerCamera(ecs_iter_t* it)
 {
-	Positin* targetPosition = ecs_field(it, Positin, 1);
+	Position* targetPosition = ecs_field(it, Position, 1);
 	Shape* targetShape = ecs_field(it, Shape, 2);
 
 	// Follow the player
@@ -215,14 +264,14 @@ void BeginRendering(ecs_iter_t* it)
 
 void RenderWorld(ecs_iter_t* it)
 {
-	Positin* posArray = ecs_field(it, Positin, 1);
+	Position* posArray = ecs_field(it, Position, 1);
 	Shape* shapeArray = ecs_field(it, Shape, 2);
 	ShapeColor* shapeColorArray = ecs_field(it, ShapeColor, 3);
 
 	BeginMode2D(playerCamera);
 	for (int i = 0; i < it->count; i++)
 	{
-		Positin position = posArray[i];
+		Position position = posArray[i];
 		Shape shape = shapeArray[i];
 		Color color = (shapeColorArray[i]).color;
 
@@ -271,19 +320,18 @@ void RenderWorld(ecs_iter_t* it)
 
 void RenderPosition(ecs_iter_t* it)
 {
-	Positin* positionArray = ecs_field(it, Positin, 1);
+	Position* positionArray = ecs_field(it, Position, 1);
 	Shape* shapeArray = ecs_field(it, Shape, 2);
 
 	for (size_t i = 0; i < it->count; i++)
 	{
-		Positin position = positionArray[i];
+		Position position = positionArray[i];
 		Shape shape = shapeArray[i];
 
-		char* positionText = TextFormat("x: %2f , y: %2f", position.x, position.y);
+		char* positionText = TextFormat("x: %i , y: %i", (int)position.x, (int)position.y);
 		BeginMode2D(playerCamera);
 		DrawText(positionText, position.x + shape.baseWidth / 2, position.y - 10, 20, RED);
 		EndMode2D(playerCamera);
-
 	}
 }
 
@@ -297,6 +345,5 @@ void EndRendering(ecs_iter_t* it)
 	else if (fps < 15) color = RED;             // Low FPS
 
 	DrawText(TextFormat("%2i FPS", GetFPS()), 10, 10, 50, color);
-	DrawText(TextFormat("%2f Zoom", playerCamera.zoom), 10, 60, 50, PINK);
 	EndDrawing();
 }
