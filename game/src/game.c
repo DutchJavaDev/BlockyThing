@@ -6,18 +6,19 @@
 #define W 1200
 #define STATIC_BODY_COUNT 25
 #define BLOCK_SIZE 50
+const float hitBoxMultiplier = 1.2f;
 const int screenWidth = W;
 const int screenHeight = W / 16 * 9;
 Camera2D playerCamera;
-ecs_query_t* _static_bodies_query;
+ecs_filter_t* _static_bodies_filter;
 ecs_world_t* _world;
 //----------------------------------------------------------------------------------
 // Local Variables Definition (local to this module)
 //----------------------------------------------------------------------------------
 static const float MAX_ZOOM = 7.0f;
 static const int WORLD_SPEED = 5;
-static const int WORLD_WIDTH = W / 2;
-static const int WORLD_HEIGHT = W / 2;
+static const int WORLD_WIDTH = W * 2;
+static const int WORLD_HEIGHT = W * 2;
 static ecs_entity_t* STATIC_BODIES[STATIC_BODY_COUNT];
 //----------------------------------------------------------------------------------
 // Local Functions Declaration
@@ -31,6 +32,7 @@ int main(void)
 {
 	// Initialization
 	//---------------------------------------------------------
+	SetRandomSeed((int)time(NULL)); // Let there be randomness
 	playerCamera.offset = (Vector2)
 	{
 		screenWidth / 2,
@@ -40,7 +42,6 @@ int main(void)
 	playerCamera.zoom = 2.0f;
 	playerCamera.rotation = 0;
 
-	InitWindow(screenWidth, screenHeight, "BlockyThing");
 
 	// FLECS init
 	ecs_world_t* world = ecs_init();
@@ -48,20 +49,13 @@ int main(void)
 
 	ECS_COMPONENT(world, Player);
 	ECS_COMPONENT(world, Velocity);
-	ECS_COMPONENT(world, Position);
+	ECS_COMPONENT(world, WorldPosition);
 	ECS_COMPONENT(world, Shape);
 	ECS_COMPONENT(world, ShapeColor);
 	ECS_COMPONENT(world, StaticBody);
 	ECS_COMPONENT(world, DynamicBody);
 
-	// testing
-	ecs_entity_t* object = ecs_new_id(world);
-	ecs_set(world, object, Player, { 0 });
-	ecs_set(world, object, Velocity, { 0,0 });
-	ecs_set(world, object, Position, { 150,150 });
-	ecs_set(world, object, Shape, { RECTANGLE_SHAPE,BLOCK_SIZE,BLOCK_SIZE });
-	ecs_set(world, object, ShapeColor, { RED });
-	ecs_set(world, object, DynamicBody, { 0 });
+	int playerIndex = GetRandomValue(0, STATIC_BODY_COUNT - 1);
 
 	for (int i = 0; i < STATIC_BODY_COUNT; i++)
 	{
@@ -76,37 +70,45 @@ int main(void)
 		c.b = GetRandomValue(0, 255);
 		c.a = 255;
 
-		int shape = RECTANGLE_SHAPE;
+		int shape = GetRandomValue(0, 2);
 
-		ecs_set(world, STATIC_BODIES[i], Position, { x,y });
-		ecs_set(world, STATIC_BODIES[i], Shape, { shape,BLOCK_SIZE,BLOCK_SIZE });
+		ecs_set(world, STATIC_BODIES[i], WorldPosition, { x,y });
+
 		ecs_set(world, STATIC_BODIES[i], ShapeColor, { c });
-		ecs_set(world, STATIC_BODIES[i], StaticBody, { 0 });
-	}
 
-	_static_bodies_query = ecs_query(world, {
-		.filter.terms =
+		if (i == playerIndex)
 		{
-			{
-				.id = ecs_id(Position)
-			},
-			{
-				.id = ecs_id(Shape)
-			},
-			{
-				.id = ecs_id(StaticBody)
-			}
-		} });
+			ecs_set(world, STATIC_BODIES[i], Player, { 0 });
+			ecs_set(world, STATIC_BODIES[i], DynamicBody, { 0 });
+			ecs_set(world, STATIC_BODIES[i], Velocity, { 0,0 });
+			ecs_set(world, STATIC_BODIES[i], Shape, { RECTANGLE_SHAPE,BLOCK_SIZE,BLOCK_SIZE });
+		}
+		else
+		{
+			ecs_set(world, STATIC_BODIES[i], StaticBody, { 0 });
+			ecs_set(world, STATIC_BODIES[i], Shape, { shape,BLOCK_SIZE,BLOCK_SIZE });
+		}
+	}
 
 	// SYSTEMS
 	ECS_SYSTEM(world, CheckUserInput, EcsPreUpdate, Player, Velocity, DynamicBody);
-	ECS_SYSTEM(world, ApplyVelocity, EcsOnUpdate, Velocity, Position, DynamicBody);
-	ECS_SYSTEM(world, CollisionDetection, EcsOnValidate, Position, Shape, DynamicBody);
-	ECS_SYSTEM(world, UpdatePlayerCamera, EcsPostUpdate, Position, Shape, Player);
+	ECS_SYSTEM(world, ApplyVelocity, EcsOnUpdate, Velocity, WorldPosition, DynamicBody);
+	ECS_SYSTEM(world, CollisionDetection, EcsOnValidate, WorldPosition, Shape, DynamicBody);
+	ECS_SYSTEM(world, UpdatePlayerCamera, EcsPostUpdate, WorldPosition, Shape, Player);
 	ECS_SYSTEM(world, BeginRendering, EcsPreStore);
-	ECS_SYSTEM(world, RenderWorld, EcsOnStore, Position, Shape, ShapeColor);
-	ECS_SYSTEM(world, RenderPosition, EcsOnStore, Position, Shape);
+	ECS_SYSTEM(world, RenderWorld, EcsOnStore, WorldPosition, Shape, ShapeColor);
+	ECS_SYSTEM(world, RenderPosition, EcsOnStore, WorldPosition, Shape);
+	ECS_SYSTEM(world, RenderHitBox, EcsOnStore, WorldPosition, Shape, StaticBody);
 	ECS_SYSTEM(world, EndRendering, EcsOnStore);
+
+	_static_bodies_filter = ecs_filter(world, {
+   .terms = {
+	   { ecs_id(WorldPosition) }, { ecs_id(Shape) }, { ecs_id(StaticBody) }
+   }
+		});
+
+	// raylib init
+	InitWindow(screenWidth, screenHeight, "BlockyThing");
 #if defined(PLATFORM_WEB)
 	emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
 #else
@@ -119,11 +121,12 @@ int main(void)
 		UpdateDrawFrame(world);
 	}
 #endif
-	ecs_fini(world);
-
 	CloseWindow();          // Close window and OpenGL context
 	//--------------------------------------------------------------------------------------
-	return 0;
+
+	//ecs_query_fini(_static_bodies_query);
+
+	return ecs_fini(world);
 }
 
 
@@ -171,37 +174,114 @@ void CheckUserInput(ecs_iter_t* it)
 void ApplyVelocity(ecs_iter_t* it)
 {
 	Velocity* velocityArray = ecs_field(it, Velocity, 1);
-	Position* positionArray = ecs_field(it, Position, 2);
+	WorldPosition* positionArray = ecs_field(it, WorldPosition, 2);
 	for (int i = 0; i < it->count; i++)
 	{
 		Velocity* velocity = &velocityArray[i];
-		Position* position = &positionArray[i];
+		WorldPosition* position = &positionArray[i];
 		position->x += velocity->xVelocity;
 		position->y += velocity->yVelocity;
 	}
 }
 void CollisionDetection(ecs_iter_t* it)
 {
-	Position* dynamicPositionArray = ecs_field(it, Position, 1);
+	WorldPosition* dynamicPositionArray = ecs_field(it, WorldPosition, 1);
 	Shape* dynamicShapeArray = ecs_field(it, Shape, 2);
-
 	// Get all static bodies
 	ecs_iter_t static_bodies_iterator =
-		ecs_query_iter(_world, _static_bodies_query);
+		ecs_filter_iter(_world, _static_bodies_filter);
 
-	for (size_t i = 0; i < it->count; i++)
+	while (ecs_filter_next(&static_bodies_iterator))
 	{
-		Position dynamicPosition = dynamicPositionArray[i];
-		Shape dynamicShape = dynamicShapeArray[i];
+		WorldPosition* staticPositionArray = ecs_field(&static_bodies_iterator, WorldPosition, 1);
+		Shape* staticShapeArray = ecs_field(&static_bodies_iterator, Shape, 2);
 
-		while (ecs_query_next(&static_bodies_iterator))
+		for (size_t ii = 0; ii < static_bodies_iterator.count; ii++)
 		{
-			Position* staticPositionArray = ecs_field(&static_bodies_iterator, Position, 1);
-			Shape* staticShapeArray = ecs_field(&static_bodies_iterator, Shape, 2);
+			WorldPosition* staticPosition = &staticPositionArray[ii];
+			Shape* staticShape = &staticShapeArray[ii];
+			// create a hit box around self
+			// +50% of self
 
-			for (size_t ii = 0; ii < static_bodies_iterator.count; ii++)
+			// This can be done on entity init with custom component instead of here :)
+			float parentCenterX = staticPosition->x + (staticShape->baseWidth / 2);
+			float parentCenterY = staticPosition->y + (staticShape->baseHeight / 2);
+			float parentWidth = staticShape->baseWidth;
+			float parentHeight = staticShape->baseHeight;
+
+			float hitBoxWidth = parentWidth * hitBoxMultiplier;
+			float hitBoxHeight = parentHeight * hitBoxMultiplier;
+			float hitBoxX = parentCenterX - hitBoxWidth / 2;
+			float hitBoxY = parentCenterY - hitBoxHeight / 2;
+
+			Rectangle staticHitbox = { hitBoxX, hitBoxY, hitBoxWidth, hitBoxHeight };
+			Rectangle parentHitbox = { staticPosition->x,staticPosition->y,staticShape->baseWidth,staticShape->baseHeight };
+
+			for (size_t i = 0; i < it->count; i++)
 			{
+				WorldPosition* dynamicPosition = &dynamicPositionArray[i];
+				Shape* dynamicShape = &dynamicShapeArray[i];
 
+				Rectangle dynamicHitbox = (Rectangle){ dynamicPosition->x, dynamicPosition->y, dynamicShape->baseWidth, dynamicShape->baseHeight };
+
+				if (CheckCollisionRecs(staticHitbox, dynamicHitbox))
+				{
+					// start checking if colliding with parent
+					if (CheckCollisionRecs(dynamicHitbox, parentHitbox))
+					{
+						// center point
+						float dynamicCenterX = dynamicHitbox.x + dynamicHitbox.width / 2;
+						float dynamicCenterY = dynamicHitbox.y + dynamicHitbox.height / 2;
+
+						// difference between center points
+						float deltaX = dynamicCenterX - parentCenterX;
+						float deltaY = dynamicCenterY - parentCenterY;
+
+						// Horizontal collision (left or right)
+						if (abs(deltaX) > abs(deltaY))
+						{
+							// right side collision
+							if (deltaX < 0)
+							{
+								// snap to position
+								dynamicPosition->x = staticPosition->x - dynamicShape->baseWidth;
+							}
+
+							// left side collision
+							if (deltaX > 0)
+							{
+								// snap to position
+								dynamicPosition->x = staticPosition->x + dynamicShape->baseWidth;
+							}
+						}
+
+						// Vertical collision (up or down)
+						if (abs(deltaX) < abs(deltaY))
+						{
+							// bottom collision
+							if (deltaY < 0)
+							{
+								// snap to position
+								dynamicPosition->y = staticPosition->y - dynamicShape->baseHeight;
+							}
+
+							// top collision
+							if (deltaY > 0)
+							{
+								// snap to position
+								dynamicPosition->y = staticPosition->y + dynamicShape->baseHeight;
+							}
+						}
+					}
+					else
+					{
+						continue;
+					}
+				}
+				else
+				{
+					continue;
+				}
 			}
 		}
 	}
@@ -209,7 +289,7 @@ void CollisionDetection(ecs_iter_t* it)
 
 void UpdatePlayerCamera(ecs_iter_t* it)
 {
-	Position* targetPosition = ecs_field(it, Position, 1);
+	WorldPosition* targetPosition = ecs_field(it, WorldPosition, 1);
 	Shape* targetShape = ecs_field(it, Shape, 2);
 
 	// Follow the player
@@ -264,14 +344,14 @@ void BeginRendering(ecs_iter_t* it)
 
 void RenderWorld(ecs_iter_t* it)
 {
-	Position* posArray = ecs_field(it, Position, 1);
+	WorldPosition* posArray = ecs_field(it, WorldPosition, 1);
 	Shape* shapeArray = ecs_field(it, Shape, 2);
 	ShapeColor* shapeColorArray = ecs_field(it, ShapeColor, 3);
 
 	BeginMode2D(playerCamera);
 	for (int i = 0; i < it->count; i++)
 	{
-		Position position = posArray[i];
+		WorldPosition position = posArray[i];
 		Shape shape = shapeArray[i];
 		Color color = (shapeColorArray[i]).color;
 
@@ -289,10 +369,10 @@ void RenderWorld(ecs_iter_t* it)
 		}
 		else if (shape.shapeId == CIRCLE_SHAPE)
 		{
-			int centerX = position.x + shape.baseWidth / 2;
-			int centerY = position.y + shape.baseHeight / 2;
-			DrawCircle(centerX, centerY, shape.baseWidth * 0.85f, color);
-			DrawCircleLines(centerX, centerY, shape.baseWidth * 0.85f, WHITE);
+			int centerX = position.x + shape.baseWidth / 4;
+			int centerY = position.y + shape.baseHeight / 4;
+			DrawCircle(centerX, centerY, shape.baseWidth, color);
+			DrawCircleLines(centerX, centerY, shape.baseWidth, WHITE);
 		}
 		else
 		{
@@ -320,17 +400,43 @@ void RenderWorld(ecs_iter_t* it)
 
 void RenderPosition(ecs_iter_t* it)
 {
-	Position* positionArray = ecs_field(it, Position, 1);
+	WorldPosition* positionArray = ecs_field(it, WorldPosition, 1);
 	Shape* shapeArray = ecs_field(it, Shape, 2);
 
 	for (size_t i = 0; i < it->count; i++)
 	{
-		Position position = positionArray[i];
+		WorldPosition position = positionArray[i];
 		Shape shape = shapeArray[i];
 
 		char* positionText = TextFormat("x: %i , y: %i", (int)position.x, (int)position.y);
 		BeginMode2D(playerCamera);
 		DrawText(positionText, position.x + shape.baseWidth / 2, position.y - 10, 20, RED);
+		EndMode2D(playerCamera);
+	}
+}
+
+void RenderHitBox(ecs_iter_t* it)
+{
+	WorldPosition* positionArray = ecs_field(it, WorldPosition, 1);
+	Shape* shapeArray = ecs_field(it, Shape, 2);
+
+	for (size_t i = 0; i < it->count; i++)
+	{
+		WorldPosition position = positionArray[i];
+		Shape shape = shapeArray[i];
+
+		BeginMode2D(playerCamera);
+		float parentCenterX = position.x + (shape.baseWidth / 2);
+		float parentCenterY = position.y + (shape.baseHeight / 2);
+
+		float hitBoxWidth = shape.baseWidth * hitBoxMultiplier;
+		float hitBoxHeight = shape.baseHeight * hitBoxMultiplier;
+		float hitBoxX = parentCenterX - hitBoxWidth / 2;
+		float hitBoxY = parentCenterY - hitBoxHeight / 2;
+
+		Rectangle hitbox = { hitBoxX, hitBoxY, hitBoxWidth, hitBoxHeight };
+
+		DrawRectangleRec(hitbox, (Color) { 255, 0, 0, 255 * 0.25 });
 		EndMode2D(playerCamera);
 	}
 }

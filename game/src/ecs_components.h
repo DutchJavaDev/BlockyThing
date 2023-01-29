@@ -17,7 +17,7 @@ typedef struct
 typedef struct {
 	float x;
 	float y;
-} Position;
+} WorldPosition;
 
 typedef struct {
 	int shapeId;
