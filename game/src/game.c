@@ -93,7 +93,7 @@ int main(void)
 	// SYSTEMS
 	ECS_SYSTEM(world, CheckUserInput, EcsPreUpdate, Player, Velocity, DynamicBody);
 	ECS_SYSTEM(world, ApplyVelocity, EcsOnUpdate, Velocity, WorldPosition, DynamicBody);
-	ECS_SYSTEM(world, CollisionDetection, EcsOnValidate, WorldPosition, Shape, DynamicBody);
+	ECS_SYSTEM(world, CollisionDetection, EcsOnValidate, WorldPosition, Shape, Velocity, DynamicBody);
 	ECS_SYSTEM(world, UpdatePlayerCamera, EcsPostUpdate, WorldPosition, Shape, Player);
 	ECS_SYSTEM(world, BeginRendering, EcsPreStore);
 	ECS_SYSTEM(world, RenderWorld, EcsOnStore, WorldPosition, Shape, ShapeColor);
@@ -187,6 +187,7 @@ void CollisionDetection(ecs_iter_t* it)
 {
 	WorldPosition* dynamicPositionArray = ecs_field(it, WorldPosition, 1);
 	Shape* dynamicShapeArray = ecs_field(it, Shape, 2);
+	Velocity* dynamicVelocityArray = ecs_field(it, Velocity, 3);
 	// Get all static bodies
 	ecs_iter_t static_bodies_iterator =
 		ecs_filter_iter(_world, _static_bodies_filter);
@@ -221,6 +222,7 @@ void CollisionDetection(ecs_iter_t* it)
 			{
 				WorldPosition* dynamicPosition = &dynamicPositionArray[i];
 				Shape* dynamicShape = &dynamicShapeArray[i];
+				Velocity* velocity = &dynamicVelocityArray[i];
 
 				Rectangle dynamicHitbox = (Rectangle){ dynamicPosition->x, dynamicPosition->y, dynamicShape->baseWidth, dynamicShape->baseHeight };
 
@@ -253,6 +255,9 @@ void CollisionDetection(ecs_iter_t* it)
 								// snap to position
 								dynamicPosition->x = staticPosition->x + dynamicShape->baseWidth;
 							}
+
+							// will happen next frame 
+							velocity->xVelocity = (velocity->xVelocity * -1) * 2;
 						}
 
 						// Vertical collision (up or down)
@@ -271,6 +276,9 @@ void CollisionDetection(ecs_iter_t* it)
 								// snap to position
 								dynamicPosition->y = staticPosition->y + dynamicShape->baseHeight;
 							}
+
+							// will happen next frame 
+							velocity->yVelocity = (velocity->yVelocity * -1) * 2;
 						}
 					}
 					else
@@ -322,7 +330,7 @@ void UpdatePlayerCamera(ecs_iter_t* it)
 		playerCamera.target.y = WORLD_HEIGHT - playerCamera.offset.y / 2;
 	}
 
-	//playerCamera.zoom += ((float)GetMouseWheelMove() * 0.75f);
+	playerCamera.zoom += ((float)GetMouseWheelMove() * 0.75f);
 
 	/*if (playerCamera.zoom > MAX_ZOOM)
 		playerCamera.zoom = MAX_ZOOM;
@@ -369,8 +377,8 @@ void RenderWorld(ecs_iter_t* it)
 		}
 		else if (shape.shapeId == CIRCLE_SHAPE)
 		{
-			int centerX = position.x + shape.baseWidth / 4;
-			int centerY = position.y + shape.baseHeight / 4;
+			int centerX = position.x + shape.baseWidth / 2;
+			int centerY = position.y + shape.baseHeight / 2;
 			DrawCircle(centerX, centerY, shape.baseWidth, color);
 			DrawCircleLines(centerX, centerY, shape.baseWidth, WHITE);
 		}
