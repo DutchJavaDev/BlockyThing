@@ -12,11 +12,14 @@ const int screenHeight = W / 16 * 9;
 Camera2D playerCamera;
 ecs_filter_t* _static_bodies_filter;
 ecs_world_t* _world;
+
+// Functions
+
 //----------------------------------------------------------------------------------
 // Local Variables Definition (local to this module)
 //----------------------------------------------------------------------------------
 static const float MAX_ZOOM = 7.0f;
-static const int WORLD_SPEED = 5;
+static const int WORLD_SPEED = 10;
 static const int WORLD_WIDTH = W * 2;
 static const int WORLD_HEIGHT = W * 2;
 static ecs_entity_t* STATIC_BODIES[STATIC_BODY_COUNT];
@@ -91,16 +94,9 @@ int main(void)
 	}
 
 	// SYSTEMS
-	ECS_SYSTEM(world, CheckUserInput, EcsPreUpdate, Player, Velocity, DynamicBody);
-	ECS_SYSTEM(world, ApplyVelocity, EcsOnUpdate, Velocity, WorldPosition, DynamicBody);
-	ECS_SYSTEM(world, CollisionDetection, EcsOnValidate, WorldPosition, Shape, Velocity, DynamicBody);
-	ECS_SYSTEM(world, UpdatePlayerCamera, EcsPostUpdate, WorldPosition, Shape, Player);
-	ECS_SYSTEM(world, BeginRendering, EcsPreStore);
-	ECS_SYSTEM(world, RenderWorld, EcsOnStore, WorldPosition, Shape, ShapeColor);
-	ECS_SYSTEM(world, RenderPosition, EcsOnStore, WorldPosition, Shape);
-	ECS_SYSTEM(world, RenderHitBox, EcsOnStore, WorldPosition, Shape, StaticBody);
-	ECS_SYSTEM(world, EndRendering, EcsOnStore);
+	initSystems(world);
 
+	// free!
 	_static_bodies_filter = ecs_filter(world, {
    .terms = {
 	   { ecs_id(WorldPosition) }, { ecs_id(Shape) }, { ecs_id(StaticBody) }
@@ -140,16 +136,16 @@ void CheckUserInput(ecs_iter_t* it)
 	Velocity* velocity = ecs_field(it, Velocity, 2);
 
 	if (velocity->xVelocity > 0)
-		velocity->xVelocity = velocity->xVelocity - GetFrameTime();
+		velocity->xVelocity = Clamp(velocity->xVelocity - GetFrameTime(), 0, WORLD_SPEED);
 
 	if (velocity->xVelocity < 0)
-		velocity->xVelocity = velocity->xVelocity + GetFrameTime();
+		velocity->xVelocity = Clamp(velocity->xVelocity + GetFrameTime(), -WORLD_SPEED, 0);
 
 	if (velocity->yVelocity > 0)
-		velocity->yVelocity = velocity->yVelocity - GetFrameTime();
+		velocity->yVelocity = Clamp(velocity->yVelocity - GetFrameTime(), 0, WORLD_SPEED);
 
 	if (velocity->yVelocity < 0)
-		velocity->yVelocity = velocity->yVelocity + GetFrameTime();
+		velocity->yVelocity = Clamp(velocity->yVelocity + GetFrameTime(), -WORLD_SPEED, 0);
 
 	float _velocity = GetFrameTime() * WORLD_SPEED;
 
