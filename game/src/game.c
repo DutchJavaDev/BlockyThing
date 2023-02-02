@@ -1,5 +1,4 @@
 #include "archi.h"
-
 //----------------------------------------------------------------------------------
 // Shared Variables Definition (global)
 //----------------------------------------------------------------------------------
@@ -10,9 +9,9 @@ const float hitBoxMultiplier = 1.2f;
 const int screenWidth = W;
 const int screenHeight = W / 16 * 9;
 Camera2D playerCamera;
-ecs_filter_t* _static_bodies_filter;
 ecs_world_t* _world;
-
+Texture2D img;
+Texture2D player;
 // Functions
 
 //----------------------------------------------------------------------------------
@@ -20,22 +19,29 @@ ecs_world_t* _world;
 //----------------------------------------------------------------------------------
 static const float MAX_ZOOM = 7.0f;
 static const int WORLD_SPEED = 10;
-static const int WORLD_WIDTH = W * 2;
-static const int WORLD_HEIGHT = W * 2;
 static ecs_entity_t* STATIC_BODIES[STATIC_BODY_COUNT];
 //----------------------------------------------------------------------------------
 // Local Functions Declaration
 //----------------------------------------------------------------------------------
 void UpdateDrawFrame(ecs_world_t* world);
-
 //----------------------------------------------------------------------------------
 // Main entry point
 //----------------------------------------------------------------------------------
 int main(void)
 {
 	// Initialization
-	//---------------------------------------------------------
+	//---------------------------------------------------------LoadFileText
 	SetRandomSeed((int)time(NULL)); // Let there be randomness
+	// FLECS init
+	ecs_world_t* world = initBlockyThingWorld();
+	_world = world;
+	FILE* worldFile = fopen("resources/map0..cbin", "r");
+	if (worldFile == NULL)
+	{
+		exit(-1);
+	}
+	LoadWorld(world, worldFile);
+	fclose(worldFile);
 	playerCamera.offset = (Vector2)
 	{
 		screenWidth / 2,
@@ -45,66 +51,13 @@ int main(void)
 	playerCamera.zoom = 2.0f;
 	playerCamera.rotation = 0;
 
-
-	// FLECS init
-	ecs_world_t* world = ecs_init();
-	_world = world;
-
-	ECS_COMPONENT(world, Player);
-	ECS_COMPONENT(world, Velocity);
-	ECS_COMPONENT(world, WorldPosition);
-	ECS_COMPONENT(world, Shape);
-	ECS_COMPONENT(world, ShapeColor);
-	ECS_COMPONENT(world, StaticBody);
-	ECS_COMPONENT(world, DynamicBody);
-
-	int playerIndex = GetRandomValue(0, STATIC_BODY_COUNT - 1);
-
-	for (int i = 0; i < STATIC_BODY_COUNT; i++)
-	{
-		STATIC_BODIES[i] = ecs_new_id(world);
-
-		float x = GetRandomValue(BLOCK_SIZE, WORLD_WIDTH - BLOCK_SIZE);
-		float y = GetRandomValue(BLOCK_SIZE, WORLD_HEIGHT - BLOCK_SIZE);
-
-		Color c;
-		c.r = GetRandomValue(0, 255);
-		c.g = GetRandomValue(0, 255);
-		c.b = GetRandomValue(0, 255);
-		c.a = 255;
-
-		int shape = GetRandomValue(0, 2);
-
-		ecs_set(world, STATIC_BODIES[i], WorldPosition, { x,y });
-
-		ecs_set(world, STATIC_BODIES[i], ShapeColor, { c });
-
-		if (i == playerIndex)
-		{
-			ecs_set(world, STATIC_BODIES[i], Player, { 0 });
-			ecs_set(world, STATIC_BODIES[i], DynamicBody, { 0 });
-			ecs_set(world, STATIC_BODIES[i], Velocity, { 0,0 });
-			ecs_set(world, STATIC_BODIES[i], Shape, { RECTANGLE_SHAPE,BLOCK_SIZE,BLOCK_SIZE });
-		}
-		else
-		{
-			ecs_set(world, STATIC_BODIES[i], StaticBody, { 0 });
-			ecs_set(world, STATIC_BODIES[i], Shape, { shape,BLOCK_SIZE,BLOCK_SIZE });
-		}
-	}
-
 	// SYSTEMS
-	initSystems(world);
-
-	// free!
-	_static_bodies_filter = ecs_filter(world, {
-   .terms = {
-	   { ecs_id(WorldPosition) }, { ecs_id(Shape) }, { ecs_id(StaticBody) }
-   }
-		});
+	InitSystems(world);
 
 	// raylib init
 	InitWindow(screenWidth, screenHeight, "BlockyThing");
+	img = LoadTexture("resources/default_tiles.png");
+	player = LoadTexture("resources/player.png");
 #if defined(PLATFORM_WEB)
 	emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
 #else
@@ -119,16 +72,16 @@ int main(void)
 #endif
 	CloseWindow();          // Close window and OpenGL context
 	//--------------------------------------------------------------------------------------
-
-	//ecs_query_fini(_static_bodies_query);
-
+	UnloadTexture(img);
+	UnloadTexture(player);
+	//UnloadFileText(data);
 	return ecs_fini(world);
 }
 
 
 void UpdateDrawFrame(ecs_world_t* world)
 {
-	ecs_progress(world, GetFrameTime());
+	ecs_progress(world, 0);
 }
 
 void CheckUserInput(ecs_iter_t* it)
@@ -184,6 +137,14 @@ void CollisionDetection(ecs_iter_t* it)
 	WorldPosition* dynamicPositionArray = ecs_field(it, WorldPosition, 1);
 	Shape* dynamicShapeArray = ecs_field(it, Shape, 2);
 	Velocity* dynamicVelocityArray = ecs_field(it, Velocity, 3);
+
+	// free!
+	ecs_filter_t* _static_bodies_filter = ecs_filter(_world, {
+   .terms = {
+	   { ecs_id(WorldPosition) }, { ecs_id(Shape) }, { ecs_id(StaticBody) }
+   }
+		});
+
 	// Get all static bodies
 	ecs_iter_t static_bodies_iterator =
 		ecs_filter_iter(_world, _static_bodies_filter);
@@ -253,7 +214,7 @@ void CollisionDetection(ecs_iter_t* it)
 							}
 
 							// will happen next frame 
-							velocity->xVelocity = (velocity->xVelocity * -1) * 2;
+							velocity->xVelocity = (velocity->xVelocity * -1) * 0.5f;
 						}
 
 						// Vertical collision (up or down)
@@ -274,7 +235,7 @@ void CollisionDetection(ecs_iter_t* it)
 							}
 
 							// will happen next frame 
-							velocity->yVelocity = (velocity->yVelocity * -1) * 2;
+							velocity->yVelocity = (velocity->yVelocity * -1) * 0.5f;
 						}
 					}
 					else
@@ -289,6 +250,7 @@ void CollisionDetection(ecs_iter_t* it)
 			}
 		}
 	}
+	ecs_filter_fini(_static_bodies_filter);
 }
 
 void UpdatePlayerCamera(ecs_iter_t* it)
@@ -311,9 +273,9 @@ void UpdatePlayerCamera(ecs_iter_t* it)
 		playerCamera.target.x = playerCamera.offset.x / 2;
 	}
 	// Clamp the playerCamera x body when its higher than WORLD_WIDTH
-	if (playerCamera.target.x + playerCamera.offset.x / 2 > WORLD_WIDTH)
+	if (playerCamera.target.x + playerCamera.offset.x / 2 > worldWidth)
 	{
-		playerCamera.target.x = WORLD_WIDTH - playerCamera.offset.x / 2;
+		playerCamera.target.x = worldWidth - playerCamera.offset.x / 2;
 	}
 	// Clamp the playerCamera y body when its lower than 0
 	if (playerCamera.target.y - playerCamera.offset.y / 2 < 0)
@@ -321,9 +283,9 @@ void UpdatePlayerCamera(ecs_iter_t* it)
 		playerCamera.target.y = playerCamera.offset.y / 2;
 	}
 	// Clamp the playerCamera y body when its higher than WORLD_HEIGHT
-	if (playerCamera.target.y + playerCamera.offset.y / 2 > WORLD_HEIGHT)
+	if (playerCamera.target.y + playerCamera.offset.y / 2 > worldHeight)
 	{
-		playerCamera.target.y = WORLD_HEIGHT - playerCamera.offset.y / 2;
+		playerCamera.target.y = worldHeight - playerCamera.offset.y / 2;
 	}
 
 	playerCamera.zoom += ((float)GetMouseWheelMove() * 0.75f);
@@ -341,64 +303,46 @@ void BeginRendering(ecs_iter_t* it)
 	BeginDrawing();
 	ClearBackground(BLACK);
 	BeginMode2D(playerCamera);
-	DrawRectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, GREEN);
-	DrawRectangleLines(0, 0, WORLD_WIDTH, WORLD_HEIGHT, PINK);
+	DrawRectangle(0, 0, worldWidth, worldHeight, GRAY);
+	DrawRectangleLines(0, 0, worldWidth, worldHeight, PINK);
 	EndMode2D(playerCamera);
 }
 
-void RenderWorld(ecs_iter_t* it)
+void RenderTiles(ecs_iter_t* it)
 {
 	WorldPosition* posArray = ecs_field(it, WorldPosition, 1);
-	Shape* shapeArray = ecs_field(it, Shape, 2);
-	ShapeColor* shapeColorArray = ecs_field(it, ShapeColor, 3);
+	WorldTile* tileArray = ecs_field(it, WorldTile, 2);
 
 	BeginMode2D(playerCamera);
 	for (int i = 0; i < it->count; i++)
 	{
 		WorldPosition position = posArray[i];
-		Shape shape = shapeArray[i];
-		Color color = (shapeColorArray[i]).color;
+		WorldTile tile = tileArray[i];
 
-		if (shape.shapeId == RECTANGLE_SHAPE)
+		if (tile.tileType == 0)
 		{
-			Rectangle rectanlge =
-			{
-				position.x,
-				position.y,
-				shape.baseWidth,
-				shape.baseHeight
-			};
-			DrawRectangleRec(rectanlge, color);
-			DrawRectangleLinesEx(rectanlge, 1, YELLOW);
+			Rectangle tile0 = { 0,0,tileWidth,tileHeight };
+			DrawTextureRec(img, tile0, (Vector2) { position.x, position.y }, RAYWHITE);
 		}
-		else if (shape.shapeId == CIRCLE_SHAPE)
+		else if (tile.tileType == 6)
 		{
-			int centerX = position.x + shape.baseWidth / 2;
-			int centerY = position.y + shape.baseHeight / 2;
-			DrawCircle(centerX, centerY, shape.baseWidth, color);
-			DrawCircleLines(centerX, centerY, shape.baseWidth, WHITE);
+			Rectangle tile0 = { 6 * tileWidth,6 * tileHeight,tileWidth,tileHeight };
+			DrawTextureRec(img, tile0, (Vector2) { position.x, position.y }, RAYWHITE);
 		}
 		else
 		{
-			Vector2 one =
-			{
-				position.x + shape.baseWidth,
-				position.y + shape.baseHeight
-			};
-			Vector2 two =
-			{
-				position.x + shape.baseWidth / 2,
-				position.y
-			};
-			Vector2 three =
-			{
-				position.x,
-				position.y + shape.baseHeight
-			};
-			DrawTriangle(one, two, three, color);
-			DrawTriangleLines(one, two, three, GREEN);
+			DrawRectangle(position.x, position.y, tileWidth, tileHeight, YELLOW);
 		}
 	}
+	EndMode2D(playerCamera);
+}
+
+void RenderPlayer(ecs_iter_t* it)
+{
+	BeginMode2D(playerCamera);
+	WorldPosition* posArray = ecs_field(it, WorldPosition, 1);
+	WorldPosition position = posArray[0];
+	DrawTexture(player, position.x, position.y, WHITE);
 	EndMode2D(playerCamera);
 }
 
@@ -424,12 +368,12 @@ void RenderHitBox(ecs_iter_t* it)
 	WorldPosition* positionArray = ecs_field(it, WorldPosition, 1);
 	Shape* shapeArray = ecs_field(it, Shape, 2);
 
+	BeginMode2D(playerCamera);
 	for (size_t i = 0; i < it->count; i++)
 	{
 		WorldPosition position = positionArray[i];
 		Shape shape = shapeArray[i];
 
-		BeginMode2D(playerCamera);
 		float parentCenterX = position.x + (shape.baseWidth / 2);
 		float parentCenterY = position.y + (shape.baseHeight / 2);
 
@@ -441,12 +385,14 @@ void RenderHitBox(ecs_iter_t* it)
 		Rectangle hitbox = { hitBoxX, hitBoxY, hitBoxWidth, hitBoxHeight };
 
 		DrawRectangleRec(hitbox, (Color) { 255, 0, 0, 255 * 0.25 });
-		EndMode2D(playerCamera);
 	}
+	EndMode2D(playerCamera);
 }
 
 void EndRendering(ecs_iter_t* it)
 {
+	DrawTexture(img, 150, 150, RAYWHITE);
+
 	// FPS
 	Color color = LIME;                         // Good FPS
 	int fps = GetFPS();

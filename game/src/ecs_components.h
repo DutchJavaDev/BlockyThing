@@ -39,6 +39,11 @@ typedef struct
 	int id;
 } DynamicBody;
 
+typedef struct {
+	int tileType;
+}WorldTile;
+
+ECS_COMPONENT_DECLARE(WorldTile);
 ECS_COMPONENT_DECLARE(Player);
 ECS_COMPONENT_DECLARE(Velocity);
 ECS_COMPONENT_DECLARE(WorldPosition);
@@ -55,6 +60,7 @@ static ecs_world_t* initBlockyThingWorld()
 {
 	ecs_world_t* world = ecs_init();
 
+	ECS_COMPONENT_DEFINE(world, WorldTile);
 	ECS_COMPONENT_DEFINE(world, Player);
 	ECS_COMPONENT_DEFINE(world, Velocity);
 	ECS_COMPONENT_DEFINE(world, WorldPosition);
@@ -63,56 +69,11 @@ static ecs_world_t* initBlockyThingWorld()
 	ECS_COMPONENT_DEFINE(world, StaticBody);
 	ECS_COMPONENT_DEFINE(world, DynamicBody);
 
+	memset(&Entityies, 0, MAX_ENTITY_COUNT);
+
+	// For web inspector for entities
+	/*ecs_singleton_set(world, EcsRest, { 0 });
+	ECS_IMPORT(world, FlecsMonitor);*/
+
 	return world;
-}
-
-static void AddStaticEntityAt(ecs_world_t* world, float x, float y, float width, float height)
-{
-	if (nextEntityIndexCount > MAX_ENTITY_COUNT)
-		return;
-
-	Entityies[nextEntityIndexCount] = ecs_new_id(world);
-
-	Color c;
-	c.r = GetRandomValue(0, 255);
-	c.g = GetRandomValue(0, 255);
-	c.b = GetRandomValue(0, 255);
-	c.a = 255;
-
-	int shape = GetRandomValue(0, 2);
-
-	ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { x,y });
-	ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { 0 });
-	ecs_set(world, Entityies[nextEntityIndexCount], Shape, { shape,width,height });
-	ecs_set(world, Entityies[nextEntityIndexCount], ShapeColor, { c });
-
-	nextEntityIndexCount++;
-}
-
-static void AddDynamicEntityAt(ecs_world_t* world, float x, float y, float width, float height, bool isPlayer)
-{
-	if (nextEntityIndexCount > MAX_ENTITY_COUNT)
-		return;
-
-	Entityies[nextEntityIndexCount] = ecs_new_id(world);
-
-	Color c;
-	c.r = GetRandomValue(0, 255);
-	c.g = GetRandomValue(0, 255);
-	c.b = GetRandomValue(0, 255);
-	c.a = 255;
-
-	int shape = GetRandomValue(0, 2);
-
-	ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { x,y });
-	ecs_set(world, Entityies[nextEntityIndexCount], DynamicBody, { 0 });
-	ecs_set(world, Entityies[nextEntityIndexCount], Shape, { shape,width,height });
-	ecs_set(world, Entityies[nextEntityIndexCount], ShapeColor, { c });
-
-	if (isPlayer)
-	{
-		ecs_set(world, Entityies[nextEntityIndexCount], Player, { 0 });
-	}
-
-	nextEntityIndexCount++;
 }
