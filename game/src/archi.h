@@ -20,25 +20,34 @@ int worldHeight = 0;
 int tileWidth = 0;
 int tileHeight = 0;
 
+int teleX = 0;
+int teleY = 0;
+
 typedef struct
 {
-	char Name;
-	int x;
-	int y;
+	char Name[28];
+	float x;
+	float y;
+	int width;
+	int height;
 } WorldObject;
+
+WorldObject Objects[maxWorldObjects];
+int nextObjectIndex = 0;
 
 static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 {
 	// ????
 	char lineBuffer[maxLineBuffer];
 	memset(&lineBuffer[0], '\0', maxLineBuffer);
+	memset(&Objects[0], '\0', maxWorldObjects);
 	// Read file line by line
 	// line 0: worldWidth, worldHeight, tileWidth, tileHeight
 	// rest is of the lines is about the tiles
 	int line = 0;
 	if (fgets(lineBuffer, maxLineBuffer, worldFile) != NULL)
 	{
-		int rtn = sscanf(lineBuffer, "%d,%d,%d,%d", &worldWidth, &worldHeight, &tileWidth, &tileHeight);
+		int rtn = sscanf(lineBuffer, "%d %d %d %d", &worldWidth, &worldHeight, &tileWidth, &tileHeight);
 		worldWidth = worldWidth * tileWidth;
 		worldHeight = worldHeight * tileHeight;
 
@@ -49,7 +58,7 @@ static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 				break;
 			}
 
-			if (strcmp("map_obj", lineBuffer))
+			if (strcmp("object_data", lineBuffer))
 			{
 				// Keep reading until end of map objects
 				while (1)
@@ -59,55 +68,95 @@ static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 						break;
 					}
 
-					if (strcmp("map_obj_end", lineBuffer) == 0)
+					if (strcmp("object_data_end\n", lineBuffer) >= 0)
 					{
 						break;
 					}
 
-
 					// Load into object struct
-					char objName[16];
-					int x;
-					int y;
+					Objects[nextObjectIndex] = (WorldObject){ 1 };
 
-					sscanf(lineBuffer, "%s %d %d", &objName, &x, &y);
+					int rtn = sscanf(lineBuffer, "%s %f %f %d %d", &Objects[nextObjectIndex].Name, &Objects[nextObjectIndex].x,
+						&Objects[nextObjectIndex].y, &Objects[nextObjectIndex].width, &Objects[nextObjectIndex].height);
+
+					nextObjectIndex++;
 				}
 			}
 
-
-
-		}
-
-		int tileType;
-		int tileX;
-		int tileY;
-		sscanf(lineBuffer, "%d,%d,%d", &tileType, &tileX, &tileY);
-
-		Entityies[nextEntityIndexCount] = ecs_new_id(world);
-
-		tileX = tileX * tileWidth;
-		tileY = tileY * tileHeight;
-
-		if (line == 1)
-		{
-			ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { tileX, tileY });
-			ecs_set(world, Entityies[nextEntityIndexCount], Player, { 0 });
-			ecs_set(world, Entityies[nextEntityIndexCount], DynamicBody, { 0 });
-			ecs_set(world, Entityies[nextEntityIndexCount], Velocity, { 0,0 });
-			ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,tileWidth,tileHeight });
-			ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { tileType });
-		}
-		else
-		{
-			if (tileType == 0)
+			if (fgets(lineBuffer, maxLineBuffer, worldFile) == NULL)
 			{
-				ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { 0 });
+				break;
 			}
-			ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { tileX, tileY });
-			ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { tileType });
-			ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,tileWidth,tileHeight });
+
+			if (strcmp("tile_data", lineBuffer))
+			{
+				while (1)
+				{
+					if (fgets(lineBuffer, maxLineBuffer, worldFile) == NULL)
+					{
+						break;
+					}
+
+					if (strcmp("tile_data_end", lineBuffer) == 0)
+					{
+						break;
+					}
+
+					int tileId;
+					float tileX;
+					float tileY;
+
+					int rtn = sscanf(lineBuffer, "%d %f %f", &tileId, &tileX, &tileY);
+
+					Entityies[nextEntityIndexCount] = ecs_new_id(world);
+
+					tileX = tileX * tileWidth;
+					tileY = tileY * tileHeight;
+
+					if (tileId == 0)
+					{
+						ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { 0 });
+					}
+
+					ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { tileX, tileY });
+					ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { tileId });
+					ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,tileWidth,tileHeight });
+
+					nextEntityIndexCount++;
+				}
+			}
+
 		}
 
-		nextEntityIndexCount++;
+		// Load objects
+		// Player etc
+		for (int i = 0; i < maxWorldObjects; i++)
+		{
+			WorldObject* obj = &Objects[i];
+
+			if (strcmp("player_spawn", obj->Name) >= 0)
+			{
+				Entityies[nextEntityIndexCount] = ecs_new_id(world);
+				ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { obj->x, obj->y });
+				ecs_set(world, Entityies[nextEntityIndexCount], Player, { 0 });
+				ecs_set(world, Entityies[nextEntityIndexCount], DynamicBody, { 0 });
+				ecs_set(world, Entityies[nextEntityIndexCount], Velocity, { 0,0 });
+				ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,tileWidth,tileHeight });
+				ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { 0 });
+				teleX = obj->x;
+				teleY = obj->y;
+				nextEntityIndexCount++;
+			}
+
+			if (strcmp("col", obj->Name) >= 0)
+			{
+				Entityies[nextEntityIndexCount] = ecs_new_id(world);
+				ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { 0 });
+				ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { obj->x, obj->y });
+				ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { 0 });
+				ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,obj->width, obj->height });
+				nextEntityIndexCount++;
+			}
+		}
 	}
 }

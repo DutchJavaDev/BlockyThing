@@ -52,7 +52,7 @@ ECS_COMPONENT_DECLARE(ShapeColor);
 ECS_COMPONENT_DECLARE(StaticBody);
 ECS_COMPONENT_DECLARE(DynamicBody);
 
-#define MAX_ENTITY_COUNT 456
+#define MAX_ENTITY_COUNT 456 * 218
 const ecs_entity_t* Entityies[MAX_ENTITY_COUNT];
 int nextEntityIndexCount = 0;
 

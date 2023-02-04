@@ -5,7 +5,7 @@
 #define W 1200
 #define STATIC_BODY_COUNT 25
 #define BLOCK_SIZE 50
-const float hitBoxMultiplier = 1.2f;
+const float hitBoxMultiplier = 1.0f;
 const int screenWidth = W;
 const int screenHeight = W / 16 * 9;
 Camera2D playerCamera;
@@ -34,6 +34,10 @@ int main(void)
 	SetRandomSeed((int)time(NULL)); // Let there be randomness
 	// FLECS init
 	ecs_world_t* world = initBlockyThingWorld();
+
+	// SYSTEMS
+	InitSystems(world);
+
 	_world = world;
 	FILE* worldFile = fopen("resources/map0..cbin", "r");
 	if (worldFile == NULL)
@@ -42,6 +46,7 @@ int main(void)
 	}
 	LoadWorld(world, worldFile);
 	fclose(worldFile);
+
 	playerCamera.offset = (Vector2)
 	{
 		screenWidth / 2,
@@ -51,11 +56,9 @@ int main(void)
 	playerCamera.zoom = 2.0f;
 	playerCamera.rotation = 0;
 
-	// SYSTEMS
-	InitSystems(world);
-
 	// raylib init
 	InitWindow(screenWidth, screenHeight, "BlockyThing");
+
 	img = LoadTexture("resources/default_tiles.png");
 	player = LoadTexture("resources/player.png");
 #if defined(PLATFORM_WEB)
@@ -74,7 +77,6 @@ int main(void)
 	//--------------------------------------------------------------------------------------
 	UnloadTexture(img);
 	UnloadTexture(player);
-	//UnloadFileText(data);
 	return ecs_fini(world);
 }
 
@@ -86,7 +88,18 @@ void UpdateDrawFrame(ecs_world_t* world)
 
 void CheckUserInput(ecs_iter_t* it)
 {
+
 	Velocity* velocity = ecs_field(it, Velocity, 2);
+	WorldPosition* position = ecs_field(it, WorldPosition, 3);
+
+	if (IsKeyReleased(KEY_SPACE))
+	{
+		position->x = teleX;
+		position->y = teleY;
+		velocity->xVelocity = 0;
+		velocity->yVelocity = 0;
+	}
+
 
 	if (velocity->xVelocity > 0)
 		velocity->xVelocity = Clamp(velocity->xVelocity - GetFrameTime(), 0, WORLD_SPEED);
@@ -196,7 +209,28 @@ void CollisionDetection(ecs_iter_t* it)
 						float deltaX = dynamicCenterX - parentCenterX;
 						float deltaY = dynamicCenterY - parentCenterY;
 
-						// Horizontal collision (left or right)
+						// Vertical collision (up or down)
+						if (abs(deltaX) < abs(deltaY))
+						{
+
+							// bottom collision
+							if (deltaY < 0)
+							{
+								// snap to position
+								dynamicPosition->y = staticPosition->y - dynamicShape->baseHeight;
+							}
+
+							// top collision
+							if (deltaY > 0)
+							{
+								// snap to position
+								dynamicPosition->y = staticPosition->y + dynamicShape->baseHeight;
+							}
+
+							velocity->yVelocity = (velocity->yVelocity * -1) * 0.5f;
+
+						}
+
 						if (abs(deltaX) > abs(deltaY))
 						{
 							// right side collision
@@ -216,36 +250,7 @@ void CollisionDetection(ecs_iter_t* it)
 							// will happen next frame 
 							velocity->xVelocity = (velocity->xVelocity * -1) * 0.5f;
 						}
-
-						// Vertical collision (up or down)
-						if (abs(deltaX) < abs(deltaY))
-						{
-							// bottom collision
-							if (deltaY < 0)
-							{
-								// snap to position
-								dynamicPosition->y = staticPosition->y - dynamicShape->baseHeight;
-							}
-
-							// top collision
-							if (deltaY > 0)
-							{
-								// snap to position
-								dynamicPosition->y = staticPosition->y + dynamicShape->baseHeight;
-							}
-
-							// will happen next frame 
-							velocity->yVelocity = (velocity->yVelocity * -1) * 0.5f;
-						}
 					}
-					else
-					{
-						continue;
-					}
-				}
-				else
-				{
-					continue;
 				}
 			}
 		}
@@ -324,14 +329,11 @@ void RenderTiles(ecs_iter_t* it)
 			Rectangle tile0 = { 0,0,tileWidth,tileHeight };
 			DrawTextureRec(img, tile0, (Vector2) { position.x, position.y }, RAYWHITE);
 		}
-		else if (tile.tileType == 6)
+
+		if (tile.tileType == 6)
 		{
 			Rectangle tile0 = { 6 * tileWidth,6 * tileHeight,tileWidth,tileHeight };
 			DrawTextureRec(img, tile0, (Vector2) { position.x, position.y }, RAYWHITE);
-		}
-		else
-		{
-			DrawRectangle(position.x, position.y, tileWidth, tileHeight, YELLOW);
 		}
 	}
 	EndMode2D(playerCamera);
@@ -351,16 +353,16 @@ void RenderPosition(ecs_iter_t* it)
 	WorldPosition* positionArray = ecs_field(it, WorldPosition, 1);
 	Shape* shapeArray = ecs_field(it, Shape, 2);
 
+	BeginMode2D(playerCamera);
 	for (size_t i = 0; i < it->count; i++)
 	{
 		WorldPosition position = positionArray[i];
 		Shape shape = shapeArray[i];
 
 		char* positionText = TextFormat("x: %i , y: %i", (int)position.x, (int)position.y);
-		BeginMode2D(playerCamera);
 		DrawText(positionText, position.x + shape.baseWidth / 2, position.y - 10, 20, RED);
-		EndMode2D(playerCamera);
 	}
+	EndMode2D(playerCamera);
 }
 
 void RenderHitBox(ecs_iter_t* it)
