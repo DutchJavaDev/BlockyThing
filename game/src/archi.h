@@ -40,7 +40,7 @@ static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 	// ????
 	char lineBuffer[maxLineBuffer];
 	memset(&lineBuffer[0], '\0', maxLineBuffer);
-	memset(&Objects[0], '\0', maxWorldObjects);
+	//memset(&Objects[0], '\0', maxWorldObjects);
 	// Read file line by line
 	// line 0: worldWidth, worldHeight, tileWidth, tileHeight
 	// rest is of the lines is about the tiles
@@ -68,14 +68,12 @@ static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 						break;
 					}
 
-					if (strcmp("object_data_end\n", lineBuffer) >= 0)
+					if (strcmp("object_data_end\n", lineBuffer) == 0)
 					{
 						break;
 					}
 
 					// Load into object struct
-					Objects[nextObjectIndex] = (WorldObject){ 1 };
-
 					int rtn = sscanf(lineBuffer, "%s %f %f %d %d", &Objects[nextObjectIndex].Name, &Objects[nextObjectIndex].x,
 						&Objects[nextObjectIndex].y, &Objects[nextObjectIndex].width, &Objects[nextObjectIndex].height);
 
@@ -97,30 +95,78 @@ static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 						break;
 					}
 
-					if (strcmp("tile_data_end", lineBuffer) == 0)
+					if (strcmp("tile_data_end\n", lineBuffer) == 0)
 					{
 						break;
 					}
 
+					int layerId;
 					int tileId;
 					float tileX;
 					float tileY;
+					int tileTextureX;
+					int tileTextureY;
 
-					int rtn = sscanf(lineBuffer, "%d %f %f", &tileId, &tileX, &tileY);
+					int yOffset;
+
+					int rtn = sscanf(lineBuffer, "%d %d %f %f %d %d", &layerId, &tileId, &tileX, &tileY, &tileTextureX, &tileTextureY);
+
+					if (rtn == 0)
+					{
+						break;
+					}
 
 					Entityies[nextEntityIndexCount] = ecs_new_id(world);
 
 					tileX = tileX * tileWidth;
 					tileY = tileY * tileHeight;
 
-					if (tileId == 0)
+					switch (tileId)
 					{
-						ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { 0 });
+					case 18:
+					case 19:
+					case 20:
+					case 27:
+					case 28:
+						ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { tileId, tileX + tileWidth / 2, tileY + tileHeight / 2, tileWidth, tileHeight });
+						break;
+
+					case 15:
+					case 16:
+					case 17:
+					case 36:
+					case 37:
+					case 38:
+						yOffset = tileHeight * 0.85;
+						ecs_set(world, Entityies[nextEntityIndexCount], StaticBody,
+							{
+								tileId,
+								tileX + tileWidth / 2,
+								tileY + yOffset,
+								tileWidth,
+								tileHeight / 4
+							});
+
+						break;
+
+					default:
+						break;
+					}
+
+					switch (layerId)
+					{
+					case 1:
+						ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { tileId });
+						break;
+					case 4:
+						ecs_set(world, Entityies[nextEntityIndexCount], NatureObject, { tileId });
+						break;
+					default:
+						break;
 					}
 
 					ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { tileX, tileY });
-					ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { tileId });
-					ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,tileWidth,tileHeight });
+					ecs_set(world, Entityies[nextEntityIndexCount], TextureLocation, { tileId, tileTextureX, tileTextureY });
 
 					nextEntityIndexCount++;
 				}
@@ -134,21 +180,21 @@ static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 		{
 			WorldObject* obj = &Objects[i];
 
-			if (strcmp("player_spawn", obj->Name) >= 0)
+			if (strcmp("player_spawn", obj->Name) == 0)
 			{
 				Entityies[nextEntityIndexCount] = ecs_new_id(world);
 				ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { obj->x, obj->y });
 				ecs_set(world, Entityies[nextEntityIndexCount], Player, { 0 });
-				ecs_set(world, Entityies[nextEntityIndexCount], DynamicBody, { 0 });
+				ecs_set(world, Entityies[nextEntityIndexCount], DynamicBody, { -1, obj->x + tileWidth / 2, obj->y + tileHeight / 2,
+					tileWidth, tileHeight });
 				ecs_set(world, Entityies[nextEntityIndexCount], Velocity, { 0,0 });
-				ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,tileWidth,tileHeight });
 				ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { 0 });
 				teleX = obj->x;
 				teleY = obj->y;
 				nextEntityIndexCount++;
 			}
 
-			if (strcmp("col", obj->Name) >= 0)
+			/*if (strcmp("col", obj->Name) = 0)
 			{
 				Entityies[nextEntityIndexCount] = ecs_new_id(world);
 				ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { 0 });
@@ -156,7 +202,7 @@ static void LoadWorld(ecs_world_t* world, FILE* worldFile)
 				ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { 0 });
 				ecs_set(world, Entityies[nextEntityIndexCount], Shape, { RECTANGLE_SHAPE,obj->width, obj->height });
 				nextEntityIndexCount++;
-			}
+			}*/
 		}
 	}
 }
