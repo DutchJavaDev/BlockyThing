@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 
+#pragma region GameComponenets
 typedef struct {
 	int id;
 }Player;
@@ -50,9 +51,21 @@ typedef struct
 typedef struct
 {
 	int tileId;
+	int textureId;
 	float textureX;
 	float textureY;
 }TextureLocation;
+#pragma endregion
+
+
+typedef struct
+{
+	char Name[28];
+	float x;
+	float y;
+	int width;
+	int height;
+} WorldObject;
 
 ECS_COMPONENT_DECLARE(WorldTile);
 ECS_COMPONENT_DECLARE(Player);
@@ -67,7 +80,7 @@ ECS_COMPONENT_DECLARE(TextureLocation);
 const ecs_entity_t* Entityies[MAX_ENTITY_COUNT];
 int nextEntityIndexCount = 0;
 
-static ecs_world_t* initBlockyThingWorld()
+static ecs_world_t* createWorld()
 {
 	ecs_world_t* world = ecs_init();
 
