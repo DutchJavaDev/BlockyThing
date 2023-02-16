@@ -1,6 +1,18 @@
 #pragma once
-#define maxLineBuffer 32
-#define maxWorldObjects 32
+#pragma region MapLayersId
+#define WALKALBE_PATH_LAYER 1
+#define PLAYER_LAYER 5
+#define NATURE_OBJECTS_LAYER 4
+#define OBJECTS_LAYER 2
+#pragma endregion
+
+#pragma region InternalFunctions
+static void LoadWalkableLayerTile(ecs_world_t* world, int tileId, float tileX, float tileY, int textureId, int textureX, int textureY);
+#pragma endregion
+
+
+#define FILE_LINEBUFFER 32
+#define MAX_WORLD_OBJECTS 64
 
 static const float hitBoxMultiplier = 1.0f;
 static const float MAX_ZOOM = 7.0f;
@@ -20,7 +32,7 @@ Texture2D worldNatureSet;
 ecs_world_t* auril_world;
 Texture2D player;
 
-WorldObject Objects[maxWorldObjects];
+WorldObject Objects[MAX_WORLD_OBJECTS];
 
 static Texture2D ResolveTexture(int index)
 {
@@ -71,14 +83,14 @@ static void LoadWorldFromFile(ecs_world_t* world)
 	}
 
 	// ????
-	char lineBuffer[maxLineBuffer];
-	memset(&lineBuffer[0], '\0', maxLineBuffer);
+	char lineBuffer[FILE_LINEBUFFER];
+	memset(&lineBuffer[0], '\0', FILE_LINEBUFFER);
 	//memset(&Objects[0], '\0', maxWorldObjects);
 	// Read file line by line
 	// line 0: worldWidth, worldHeight, tileWidth, tileHeight
 	// rest is of the lines is about the tiles
 	int line = 0;
-	if (fgets(lineBuffer, maxLineBuffer, worldFile) != NULL)
+	if (fgets(lineBuffer, FILE_LINEBUFFER, worldFile) != NULL)
 	{
 		int rtn = sscanf(lineBuffer, "%d %d %d %d", &worldWidth, &worldHeight, &tileWidth, &tileHeight);
 		worldWidth = worldWidth * tileWidth;
@@ -86,7 +98,7 @@ static void LoadWorldFromFile(ecs_world_t* world)
 
 		while (1)
 		{
-			if (fgets(lineBuffer, maxLineBuffer, worldFile) == NULL)
+			if (fgets(lineBuffer, FILE_LINEBUFFER, worldFile) == NULL)
 			{
 				break;
 			}
@@ -96,7 +108,7 @@ static void LoadWorldFromFile(ecs_world_t* world)
 				// Keep reading until end of map objects
 				while (1)
 				{
-					if (fgets(lineBuffer, maxLineBuffer, worldFile) == NULL)
+					if (fgets(lineBuffer, FILE_LINEBUFFER, worldFile) == NULL)
 					{
 						break;
 					}
@@ -114,7 +126,7 @@ static void LoadWorldFromFile(ecs_world_t* world)
 				}
 			}
 
-			if (fgets(lineBuffer, maxLineBuffer, worldFile) == NULL)
+			if (fgets(lineBuffer, FILE_LINEBUFFER, worldFile) == NULL)
 			{
 				break;
 			}
@@ -123,7 +135,7 @@ static void LoadWorldFromFile(ecs_world_t* world)
 			{
 				while (1)
 				{
-					if (fgets(lineBuffer, maxLineBuffer, worldFile) == NULL)
+					if (fgets(lineBuffer, FILE_LINEBUFFER, worldFile) == NULL)
 					{
 						break;
 					}
@@ -150,55 +162,72 @@ static void LoadWorldFromFile(ecs_world_t* world)
 						break;
 					}
 
-					Entityies[nextEntityIndexCount] = ecs_new_id(world);
-
 					tileX = tileX * tileWidth;
 					tileY = tileY * tileHeight;
 
-					switch (tileId)
+					// Resolve based of layer id
+					switch (layerId)
 					{
-					case 0:
-						ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { tileId, tileX + tileWidth / 2, tileY + tileHeight / 2, tileWidth, tileHeight });
+					case WALKALBE_PATH_LAYER:
+						LoadWalkableLayerTile(world, tileId, tileX, tileY, textureId, textureX, textureY);
 						break;
 
-					case 12:
-					case 42:
-						ecs_set(world, Entityies[nextEntityIndexCount], StaticBody,
-							{
-								tileId,
-								tileX + (tileWidth * 0.2f) / 2,
-								tileY + tileHeight / 2,
-								(tileWidth * 0.2f),
-								tileHeight
-							});
+					case PLAYER_LAYER:
 						break;
 
-					case 15:
-					case 16:
-					case 17:
-					case 24:
-					case 25:
-					case 26:
-					case 36:
-					case 37:
-					case 38:
-						yOffset = tileHeight * 0.85;
-						ecs_set(world, Entityies[nextEntityIndexCount], StaticBody,
-							{
-								tileId,
-								tileX + tileWidth / 2,
-								tileY + yOffset,
-								tileWidth,
-								tileHeight / 4
-							});
-
+					case NATURE_OBJECTS_LAYER:
 						break;
 
-					default:
+					case OBJECTS_LAYER:
 						break;
+
+					default:break;
 					}
 
-					switch (layerId)
+					//switch (tileId)
+					//{
+					//case 0:
+					//	//ecs_set(world, Entityies[nextEntityIndexCount], StaticBody, { tileId, tileX + tileWidth / 2, tileY + tileHeight / 2, tileWidth, tileHeight });
+					//	break;
+
+					//case 12:
+					//case 42:
+					//	ecs_set(world, Entityies[nextEntityIndexCount], StaticBody,
+					//		{
+					//			tileId,
+					//			tileX + (tileWidth * 0.2f) / 2,
+					//			tileY + tileHeight / 2,
+					//			(tileWidth * 0.2f),
+					//			tileHeight
+					//		});
+					//	break;
+
+					//case 15:
+					//case 16:
+					//case 17:
+					//case 24:
+					//case 25:
+					//case 26:
+					//case 36:
+					//case 37:
+					//case 38:
+					//	yOffset = tileHeight * 0.85;
+					//	ecs_set(world, Entityies[nextEntityIndexCount], StaticBody,
+					//		{
+					//			tileId,
+					//			tileX + tileWidth / 2,
+					//			tileY + yOffset,
+					//			tileWidth,
+					//			tileHeight / 4
+					//		});
+
+					//	break;
+
+					//default:
+					//	break;
+					//}
+
+					/*switch (layerId)
 					{
 					case 1:
 						ecs_set(world, Entityies[nextEntityIndexCount], WorldTile, { tileId });
@@ -208,12 +237,12 @@ static void LoadWorldFromFile(ecs_world_t* world)
 						break;
 					default:
 						break;
-					}
+					}*/
 
-					ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { tileX, tileY });
+					/*ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { tileX, tileY });
 					ecs_set(world, Entityies[nextEntityIndexCount], TextureLocation, { tileId, textureId, textureX, textureY });
 
-					nextEntityIndexCount++;
+					nextEntityIndexCount++;*/
 				}
 			}
 
@@ -221,7 +250,7 @@ static void LoadWorldFromFile(ecs_world_t* world)
 
 		// Load objects
 		// Player etc
-		for (int i = 0; i < maxWorldObjects; i++)
+		for (int i = 0; i < MAX_WORLD_OBJECTS; i++)
 		{
 			WorldObject* obj = &Objects[i];
 
@@ -252,4 +281,24 @@ static void LoadWorldFromFile(ecs_world_t* world)
 	}
 
 	fclose(worldFile);
+}
+
+
+static void LoadWalkableLayerTile(ecs_world_t* world, int tileId, float tileX, float tileY, int textureId, int textureX, int textureY)
+{
+	Entityies[nextEntityIndexCount] = ecs_new_id(world);
+
+	// Collision bodies
+	switch (tileId)
+	{
+	case 9:
+		// left part 
+		// top part
+		break;
+	}
+
+	ecs_set(world, Entityies[nextEntityIndexCount], WorldPosition, { tileX, tileY });
+	ecs_set(world, Entityies[nextEntityIndexCount], TextureLocation, { tileId, textureId, textureX, textureY });
+
+	nextEntityIndexCount++;
 }
