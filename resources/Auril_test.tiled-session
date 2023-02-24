@@ -16,11 +16,11 @@
             }
         },
         "auril_home.tmx": {
-            "scale": 3,
+            "scale": 1.5,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 111.16666666666664,
-                "y": 83.5
+                "x": 193.66666666666669,
+                "y": -5.666666666666657
             }
         },
         "auril_test.tmx": {
@@ -52,8 +52,8 @@
     ],
     "project": "Auril_test.tiled-project",
     "recentFiles": [
-        "world_tiles.tsx",
         "auril_home.tmx",
+        "world_tiles.tsx",
         "auril_test.tmx",
         "nature_tiles.tsx",
         "Auril_test.tmx"
