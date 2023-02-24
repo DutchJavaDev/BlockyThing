@@ -1,4 +1,15 @@
 #pragma once
+static void SetPlayerCamera(int halfScreenWidth, int halfScreenHeight)
+{
+	playerCamera.offset = (Vector2)
+	{
+		halfScreenWidth,
+		halfScreenHeight
+	};
+	playerCamera.target = (Vector2){ 75,75 };
+	playerCamera.zoom = 2.0f;
+	playerCamera.rotation = 0;
+}
 static void CameraFollow(WorldPosition* targetPosition, DynamicBody* targetBody)
 {
 	// Follow the player
