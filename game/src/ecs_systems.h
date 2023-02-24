@@ -22,11 +22,9 @@ static void setWorldSystems(ecs_world_t* world)
 	ECS_SYSTEM(world, CollisionDetection, EcsOnValidate, WorldPosition, Velocity, DynamicBody);
 	ECS_SYSTEM(world, PlayerCamera, EcsPostUpdate, WorldPosition, DynamicBody, Player);
 	ECS_SYSTEM(world, BeginRendering, EcsPreStore);
-	ECS_SYSTEM(world, RenderTiles, EcsOnStore, WorldPosition, TextureLocation, WorldTile);
-	ECS_SYSTEM(world, RenderNatureObjects, EcsOnStore, WorldPosition, NatureObject, TextureLocation);
-	ECS_SYSTEM(world, RenderPlayer, EcsOnStore, WorldPosition, Player);
+	ECS_SYSTEM(world, RenderPlayer, EcsPreStore, WorldPosition, Player);
 	//ECS_SYSTEM(world, RenderPosition, EcsOnStore, WorldPosition, Shape, DynamicBody);
 	ECS_SYSTEM(world, RenderStaticHitBox, EcsOnStore, WorldPosition, StaticBody);
-	//ECS_SYSTEM(world, RenderDynamicHitBox, EcsOnStore, WorldPosition, DynamicBody);
+	ECS_SYSTEM(world, RenderDynamicHitBox, EcsOnStore, WorldPosition, DynamicBody);
 	ECS_SYSTEM(world, EndRendering, EcsOnStore);
 }
