@@ -1,4 +1,6 @@
 #pragma once
+static const float hitBoxMultiplier = 1.0f;
+
 static void RunCollisionSimulations(ecs_iter_t* it, WorldPosition* dynamicPositionArray, Velocity* dynamicVelocityArray,
 	DynamicBody* dynamicBodyArray, ecs_iter_t static_bodies_iterator)
 {
