@@ -1,4 +1,5 @@
 #pragma once
+#define CHAR_LOAD_SIZE 32
 static const float MAX_ZOOM = 7.0f;
 static const int WORLD_SPEED = 10;
 
@@ -23,9 +24,9 @@ typedef struct
 	float yOffset;
 	int tileWidth;
 	int tileHeight;
-	char imageFile[32];
-	char tileFile[32];
-	char collisionFile[32];
+	char imageFile[CHAR_LOAD_SIZE];
+	char tileFile[CHAR_LOAD_SIZE];
+	char collisionFile[CHAR_LOAD_SIZE];
 } TileSet;
 
 typedef struct
@@ -36,7 +37,7 @@ typedef struct
 	int tileWidth;
 	int tileHeigt;
 	int tileSetCount;
-	char worldTileFile[32];
+	char worldTileFile[CHAR_LOAD_SIZE];
 }WorldFile;
 
 typedef struct
@@ -61,27 +62,23 @@ typedef struct {
 	int height;
 }CollisionObject;
 
+typedef struct {
+	char name[CHAR_LOAD_SIZE];
+	int x;
+	int y;
+}Object;
+
+static WorldFile ReadWorldFile(char* path);
+
 static void LoadWorld(ecs_world_t* ecs_world)
 {
 	if (ChangeDirectory("resources"))
 	{
-		char* fileName = "auril_home.wf.bin";
+		char* worldFileName = "auril_home.wf.bin";
+		char* objectFileName = "auril_home.of.bin";
 
-		FILE* worldFile;
+		WorldFile world = ReadWorldFile(worldFileName);
 
-		worldFile = fopen(fileName, "rb");
-
-		if (worldFile == NULL)
-		{
-			printf("Unable to load worldfile, exiting");
-			exit(-1);
-		}
-
-		WorldFile world = { 0 };
-
-		worldTileSet = LoadTexture("world_tiles.png");
-
-		while (fread(&world, sizeof(WorldFile), 1, worldFile))
 		{
 			tileWidth = world.tileWidth;
 			tileHeight = world.tileHeigt;
@@ -114,6 +111,8 @@ static void LoadWorld(ecs_world_t* ecs_world)
 			}
 
 			WorldTile tile = { 0 };
+
+			worldTileSet = LoadTexture("world_tiles.png");
 			tileMapTexture = LoadRenderTexture(worldWidth, worldHeight);
 			SetTextureFilter(tileMapTexture.texture, TEXTURE_FILTER_POINT);
 			BeginTextureMode(tileMapTexture);
@@ -168,7 +167,9 @@ static void LoadWorld(ecs_world_t* ecs_world)
 			EndTextureMode();
 		}
 
-		fclose(worldFile);
+		// Objects
+
+		//fclose(worldFile);
 
 		ecs_entity_t* player = ecs_new_id(ecs_world);
 		ecs_set(ecs_world, player, Player, { 0 });
@@ -176,4 +177,22 @@ static void LoadWorld(ecs_world_t* ecs_world)
 		ecs_set(ecs_world, player, WorldPosition, { teleX,teleY });
 		ecs_set(ecs_world, player, DynamicBody, { 0,150,150,16,16 });
 	}
+}
+
+static WorldFile ReadWorldFile(char* path)
+{
+	FILE* file = fopen(path, "rb");
+
+	if (file == NULL)
+	{
+		printf("Failed to open file %s", path);
+		exit(1);
+	}
+
+	WorldFile worldFile = { 0 };
+
+	fread(&worldFile, sizeof(WorldFile), 1, file);
+	fclose(file);
+
+	return worldFile;
 }

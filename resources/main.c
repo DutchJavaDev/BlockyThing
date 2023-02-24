@@ -31,68 +31,78 @@ typedef struct
     char collisionFile[32];
 } TileSet;
 
+typedef struct
+{
+    char name[32];
+    int width;
+    int height;
+    int tileWidth;
+    int tileHeigt;
+    int tileSetCount;
+    char worldTileFile[32];
+} WorldData;
+
 int main(void)
 {
-    FILE *fp;
+    FILE *ffp;
+    ffp = fopen("auril_home.tf.0.tfn.bin", "rb");
 
-    TileSet set;
-
-    fp = fopen("auril_home.tf.0.bin", "rb");
-
-    if (fp == NULL)
+    if (ffp == NULL)
     {
-        printf("Error opening file.\n");
-        return 1;
+        printf("Yep ya boi failed ya!");
+        exit(-1);
     }
 
-    while (fread(&set, sizeof(TileSet), 1, fp))
-    {
-        printf("Id: %i\n", set.id);
+    Tile tile;
+    fseek(ffp,sizeof(Tile) * 1,0);
+    fread(&tile, sizeof(Tile), 1, ffp);
+    printf("tileId %i\n", tile.id);
+    printf("x %i\n", tile.xPosition);
+    printf("y %i\n", tile.yPosition);
 
-        printf("xOffset: %i\n", set.xOffset);
+    fclose(ffp);
 
-        printf("yOffset: %i\n", set.yOffset);
+    // FILE *fp;
 
-        printf("tileWidth: %i\n", set.tileWidth);
+    // TileSet set;
 
-        printf("tileHeight: %i\n", set.tileHeight);
+    // fp = fopen("auril_home.wf.bin", "rb");
 
-        printf("image: %s\n", set.imageFile);
+    // if (fp == NULL)
+    // {
+    //     printf("Error opening file.\n");
+    //     return 1;
+    // }
 
-        printf("tile: %s\n", set.tileFile);
+    // WorldData data = {0};
 
-        printf("collision: %s\n", set.collisionFile);
+    // while (fread(&data,sizeof(WorldData),1,fp))
+    // {
+    //     printf("%i\n",data.tileWidth);
+    //     printf("%i\n",data.tileHeigt);
 
-        Tile tile;
+    //     FILE* map;
 
-        FILE *tileFile = fopen(set.tileFile, "rb");
+    //     map = fopen(data.worldTileFile,"rb");
 
-        printf("Tile data\n");
-        while (fread(&tile, sizeof(Tile), 1, tileFile))
-        {
-            printf("id: %i\n", tile.id);
-            printf("x: %i\n", tile.xPosition);
-            printf("y: %i\n", tile.yPosition);
-        }
-        fclose(tileFile);
-        
-        FILE *collisionFile = fopen(set.collisionFile, "rb");
-        
-        CollisionBody collision;
+    //     if(map == NULL)
+    //     {
+    //         printf("Error opening file.\n");
+    //         break;
+    //     }
 
-        printf("TileCollision data\n");
-        while (fread(&collision, sizeof(CollisionBody), 1, collisionFile))
-        {
-            printf("tileId: %i\n", collision.tileId);
-            printf("width: %i\n", collision.width);
-            printf("height: %i\n", collision.height);
-            printf("x: %i\n", collision.xPosition);
-            printf("y: %i\n", collision.yPosition);
-        }
-        printf("end %i\n", set.id);
-    }
+    //     Tile tile;
+    //     while (fread(&tile, sizeof(Tile),1,map))
+    //     {
+    //         printf("tileId %i\n", tile.id);
+    //         printf("x %i\n", tile.xPosition);
+    //         printf("y %i\n", tile.yPosition);
+    //     }
 
-    fclose(fp);
+    //     fclose(map);
+    //     }
+
+    // fclose(fp);
 
     return 0;
 }

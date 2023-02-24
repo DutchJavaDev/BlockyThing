@@ -3,7 +3,7 @@
 #include "stdlib.h"
 #include "raylib.h"
 #include "raymath.h"
-#define CUTE_TILED_IMPLEMENTATION
+#include "raylib.h"
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif

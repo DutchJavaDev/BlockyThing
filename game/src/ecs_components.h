@@ -1,6 +1,4 @@
 #pragma once
-#include "raylib.h"
-
 #pragma region GameComponenets
 typedef struct {
 	int id;
