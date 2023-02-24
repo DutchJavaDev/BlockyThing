@@ -56,8 +56,8 @@ static void HanldePlayerInput(Velocity* velocity, WorldPosition* position)
 {
 	if (IsKeyReleased(KEY_SPACE))
 	{
-		position->x = teleX;
-		position->y = teleY;
+		position->x = playerSpawn.x;
+		position->y = playerSpawn.y;
 		velocity->xVelocity = 0;
 		velocity->yVelocity = 0;
 	}

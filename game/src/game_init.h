@@ -7,8 +7,6 @@ int worldWidth = 10;
 int worldHeight = 10;
 int tileWidth = 32;
 int tileHeight = 32;
-int teleX = 5;
-int teleY = 5;
 int nextObjectIndex = 0;
 
 Camera2D playerCamera;
@@ -16,6 +14,11 @@ RenderTexture2D tileMapTexture;
 Texture2D worldTileSet;
 ecs_world_t* auril_world;
 Texture2D player;
+
+#pragma region  Objects
+Vector2 playerSpawn = { 0 };
+#pragma endregion
+
 
 typedef struct
 {
@@ -69,6 +72,9 @@ typedef struct {
 }Object;
 
 static WorldFile ReadWorldFile(char* path);
+static TexturePosition GetTileTexturePosition(FILE* file, int index);
+static void LoadObjects(char* path);
+static void LoadTileCollisionData(FILE* collisionFile, WorldTile tile, int tileX, int tileY);
 
 static void LoadWorld(ecs_world_t* ecs_world)
 {
@@ -76,6 +82,7 @@ static void LoadWorld(ecs_world_t* ecs_world)
 	{
 		char* worldFileName = "auril_home.wf.bin";
 		char* objectFileName = "auril_home.of.bin";
+		char* textureInfoFileName = "auril_home.tf.0.tfn.bin";
 
 		WorldFile world = ReadWorldFile(worldFileName);
 
@@ -118,8 +125,8 @@ static void LoadWorld(ecs_world_t* ecs_world)
 			BeginTextureMode(tileMapTexture);
 			ClearBackground(PINK);
 
-			while (fread(&tile, sizeof(WorldTile), 1, tilemapFile))
-			{
+			do {
+
 				// needed because yea..
 				if (tile.id < 0)
 				{
@@ -130,51 +137,36 @@ static void LoadWorld(ecs_world_t* ecs_world)
 				int tileY = tile.yPosition * tileHeight;
 
 				// Load texture data
-				TexturePosition textureLocation = { 0 };
-				fseek(textTureInfoFile, sizeof(TexturePosition) * tile.id, 0);
-				fread(&textureLocation, sizeof(TexturePosition), 1, textTureInfoFile);
+				TexturePosition textureLocation = GetTileTexturePosition(textTureInfoFile, tile.id);
 
 				Rectangle textPos = (Rectangle){ textureLocation.xPosition, textureLocation.yPosition,tileWidth, tileHeight };
 				Vector2 textPosV2 = (Vector2){ tileX, tileY };
 
+				// Draw tile
 				DrawTextureRec(worldTileSet, textPos, textPosV2, WHITE);
 
 				// Load collision data
-				fseek(collisionFile, 0, 0);
-				CollisionObject cob = { 0 };
-				while (fread(&cob, sizeof(CollisionObject), 1, collisionFile))
-				{
-					if (cob.tileId == tile.id)
-					{
-						// Add as static body
-						ecs_entity_t* static_body = ecs_new_id(auril_world);
-
-						int x = tileX + cob.x;
-						int y = tileY + cob.y;
-						int width = cob.width;
-						int height = cob.height;
-
-						ecs_set(auril_world, static_body, WorldPosition, { x, y });
-						ecs_set(auril_world, static_body, StaticBody, { tile.id, x + width / 2,y + height / 2,width,height });
-					}
-				}
+				LoadTileCollisionData(collisionFile, tile, tileX, tileY);
 
 				// needed because yea..
 				tile.id = -1;
-			}
+			} while (fread(&tile, sizeof(WorldTile), 1, tilemapFile));
+
+			EndTextureMode();
+
 			fclose(tilemapFile);
 			fclose(textTureInfoFile);
-			EndTextureMode();
+			fclose(collisionFile);
+
+			// Objects
+			LoadObjects(objectFileName);
 		}
 
-		// Objects
-
-		//fclose(worldFile);
-
+		// spawn player
 		ecs_entity_t* player = ecs_new_id(ecs_world);
 		ecs_set(ecs_world, player, Player, { 0 });
 		ecs_set(ecs_world, player, Velocity, { 0, 0 });
-		ecs_set(ecs_world, player, WorldPosition, { teleX,teleY });
+		ecs_set(ecs_world, player, WorldPosition, { playerSpawn.x,playerSpawn.y });
 		ecs_set(ecs_world, player, DynamicBody, { 0,150,150,16,16 });
 	}
 }
@@ -195,4 +187,60 @@ static WorldFile ReadWorldFile(char* path)
 	fclose(file);
 
 	return worldFile;
+}
+
+static TexturePosition GetTileTexturePosition(FILE* file, int index)
+{
+	if (file == NULL)
+	{
+		printf("Failed to open file");
+		exit(1);
+	}
+
+	TexturePosition texturePos = { 0 };
+
+	fseek(file, sizeof(TexturePosition) * index, 0);
+	fread(&texturePos, sizeof(TexturePosition), 1, file);
+
+	return texturePos;
+}
+
+static void LoadObjects(char* path)
+{
+	FILE* file = fopen(path, "rb");
+
+	if (file == NULL)
+	{
+		printf("Failed to open file %s", path);
+		exit(1);
+	}
+
+	Object obj = { 0 };
+
+	do
+	{
+		if (strcmp("player_spanw", obj.name))
+		{
+			playerSpawn = (Vector2){ obj.x,obj.y };
+		}
+	} while (fread(&obj, sizeof(Object), 1, file));
+
+	fclose(file);
+}
+
+static void LoadTileCollisionData(FILE* collisionFile, WorldTile tile, int tileX, int tileY)
+{
+	fseek(collisionFile, 0, 0);
+	CollisionObject cob = { 0 };
+	do {
+		if (cob.tileId == tile.id)
+		{
+			int x = tileX + cob.x;
+			int y = tileY + cob.y;
+			int width = cob.width;
+			int height = cob.height;
+
+			AddStaticBody(auril_world, tile.id, x, y, width, height);
+		}
+	} while (fread(&cob, sizeof(CollisionObject), 1, collisionFile));
 }

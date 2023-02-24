@@ -94,3 +94,10 @@ static ecs_world_t* createWorld()
 
 	return world;
 }
+
+static void AddStaticBody(ecs_world_t* auril_world, int tileId, int centerX, int centerY, int width, int height)
+{
+	ecs_entity_t* static_body = ecs_new_id(auril_world);
+	ecs_set(auril_world, static_body, WorldPosition, { centerX, centerY });
+	ecs_set(auril_world, static_body, StaticBody, { tileId, centerX + width / 2, centerY + height / 2,width,height });
+}
