@@ -94,6 +94,7 @@ static void LoadWorld(ecs_world_t* ecs_world)
 				exit(-3);
 			}
 
+
 			FILE* tilemapFile;
 			tilemapFile = fopen(world.worldTileFile, "rb");
 			if (tilemapFile == NULL)
