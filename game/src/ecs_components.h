@@ -39,9 +39,6 @@ typedef struct
 	int baseHeight;
 } DynamicBody;
 
-typedef struct {
-	int tileId;
-}WorldTile;
 
 typedef struct
 {
@@ -67,7 +64,6 @@ typedef struct
 	int height;
 } WorldObject;
 
-ECS_COMPONENT_DECLARE(WorldTile);
 ECS_COMPONENT_DECLARE(Player);
 ECS_COMPONENT_DECLARE(Velocity);
 ECS_COMPONENT_DECLARE(WorldPosition);
@@ -84,7 +80,6 @@ static ecs_world_t* createWorld()
 {
 	ecs_world_t* world = ecs_init();
 
-	ECS_COMPONENT_DEFINE(world, WorldTile);
 	ECS_COMPONENT_DEFINE(world, Player);
 	ECS_COMPONENT_DEFINE(world, Velocity);
 	ECS_COMPONENT_DEFINE(world, WorldPosition);
