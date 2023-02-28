@@ -1,4 +1,5 @@
 #pragma once
+#define CHAR_LOAD_SIZE 32
 #pragma region GameComponenets
 typedef struct {
 	int id;
@@ -6,8 +7,8 @@ typedef struct {
 
 typedef struct
 {
-	float xVelocity;
-	float yVelocity;
+	float x;
+	float y;
 } Velocity;
 
 typedef struct {
@@ -21,34 +22,34 @@ typedef struct {
 
 typedef struct
 {
-	int tileId;
+	int id;
 	int centerX;
 	int centerY;
-	int baseWidth;
-	int baseHeight;
+	int width;
+	int height;
 }StaticBody;
 
 typedef struct
 {
-	int tileId;
+	int id;
 	int centerX;
 	int centerY;
-	int baseWidth;
-	int baseHeight;
+	int width;
+	int height;
 } DynamicBody;
 
 
 typedef struct
 {
-	int tileId;
+	int id;
 } NatureObject;
 
 typedef struct
 {
-	int tileId;
+	int id;
 	int textureId;
-	float textureX;
-	float textureY;
+	float x;
+	float y;
 }TextureLocation;
 #pragma endregion
 
@@ -61,6 +62,61 @@ typedef struct
 	int width;
 	int height;
 } WorldObject;
+
+typedef struct
+{
+	int id;
+	int x;
+	int y;
+} TexturePosition;
+
+typedef struct
+{
+	int id;
+	int x;
+	int y;
+} WorldTile;
+
+
+typedef struct {
+	int tileId;
+	int x;
+	int y;
+	int width;
+	int height;
+}CollisionObject;
+
+
+
+typedef struct
+{
+	int id;
+	float xOffset;
+	float yOffset;
+	int tileWidth;
+	int tileHeight;
+	char imageFile[CHAR_LOAD_SIZE];
+	char tileFile[CHAR_LOAD_SIZE];
+	char collisionFile[CHAR_LOAD_SIZE];
+} TileSet;
+
+typedef struct
+{
+	char name[32];
+	int width;
+	int height;
+	int tileWidth;
+	int tileHeigt;
+	int tileSetCount;
+	char worldTileFile[CHAR_LOAD_SIZE];
+}WorldFile;
+
+typedef struct {
+	char name[CHAR_LOAD_SIZE];
+	int x;
+	int y;
+}Object;
+
 
 ECS_COMPONENT_DECLARE(Player);
 ECS_COMPONENT_DECLARE(Velocity);
