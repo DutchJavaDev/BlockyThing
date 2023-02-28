@@ -6,17 +6,18 @@ static void SetPlayerCamera(int halfScreenWidth, int halfScreenHeight)
 		halfScreenWidth,
 		halfScreenHeight
 	};
-	playerCamera.target = (Vector2){ 75,75 };
-	playerCamera.zoom = 2.0f;
+	playerCamera.target = (Vector2){ 0,0 };
+	playerCamera.zoom = 1.0f;
 	playerCamera.rotation = 0;
 }
+
 static void CameraFollow(WorldPosition* targetPosition, DynamicBody* targetBody)
 {
 	// Follow the player
 	Vector2 targetbody =
 	{
-		targetPosition->x + targetBody[0].baseWidth / 2,
-		targetPosition->y + targetBody[0].baseWidth / 2
+		targetPosition->x + targetBody[0].width / 2,
+		targetPosition->y + targetBody[0].height / 2
 	};
 
 	playerCamera.target = targetbody;
@@ -58,38 +59,38 @@ static void HanldePlayerInput(Velocity* velocity, WorldPosition* position)
 	{
 		position->x = playerSpawn.x;
 		position->y = playerSpawn.y;
-		velocity->xVelocity = 0;
-		velocity->yVelocity = 0;
+		velocity->x = 0;
+		velocity->y = 0;
 	}
 
-	if (velocity->xVelocity > 0)
-		velocity->xVelocity = Clamp(velocity->xVelocity - GetFrameTime(), 0, WORLD_SPEED);
+	if (velocity->x > 0)
+		velocity->x = Clamp(velocity->x - GetFrameTime(), 0, WORLD_SPEED);
 
-	if (velocity->xVelocity < 0)
-		velocity->xVelocity = Clamp(velocity->xVelocity + GetFrameTime(), -WORLD_SPEED, 0);
+	if (velocity->x < 0)
+		velocity->x = Clamp(velocity->x + GetFrameTime(), -WORLD_SPEED, 0);
 
-	if (velocity->yVelocity > 0)
-		velocity->yVelocity = Clamp(velocity->yVelocity - GetFrameTime(), 0, WORLD_SPEED);
+	if (velocity->y > 0)
+		velocity->y = Clamp(velocity->y - GetFrameTime(), 0, WORLD_SPEED);
 
-	if (velocity->yVelocity < 0)
-		velocity->yVelocity = Clamp(velocity->yVelocity + GetFrameTime(), -WORLD_SPEED, 0);
+	if (velocity->y < 0)
+		velocity->y = Clamp(velocity->y + GetFrameTime(), -WORLD_SPEED, 0);
 
 	float _velocity = GetFrameTime() * WORLD_SPEED;
 
 	if (IsKeyDown(KEY_LEFT))
 	{
-		velocity->xVelocity -= _velocity;
+		velocity->x -= _velocity;
 	}
 	if (IsKeyDown(KEY_RIGHT))
 	{
-		velocity->xVelocity += _velocity;
+		velocity->x += _velocity;
 	}
 	if (IsKeyDown(KEY_UP))
 	{
-		velocity->yVelocity -= _velocity;
+		velocity->y -= _velocity;
 	}
 	if (IsKeyDown(KEY_DOWN))
 	{
-		velocity->yVelocity += _velocity;
+		velocity->y += _velocity;
 	}
 }
