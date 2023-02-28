@@ -18,8 +18,8 @@ static void RunCollisionSimulations(ecs_iter_t* it, WorldPosition* dynamicPositi
 
 			float parentCenterX = staticBody->centerX;
 			float parentCenterY = staticBody->centerY;
-			float parentWidth = staticBody->baseWidth;
-			float parentHeight = staticBody->baseHeight;
+			float parentWidth = staticBody->width;
+			float parentHeight = staticBody->height;
 
 			float hitBoxWidth = parentWidth * hitBoxMultiplier;
 			float hitBoxHeight = parentHeight * hitBoxMultiplier;
@@ -34,7 +34,7 @@ static void RunCollisionSimulations(ecs_iter_t* it, WorldPosition* dynamicPositi
 				Velocity* velocity = &dynamicVelocityArray[i];
 				DynamicBody dynamicBody = dynamicBodyArray[i];
 
-				Rectangle dynamicHitbox = (Rectangle){ dynamicPosition->x, dynamicPosition->y, dynamicBody.baseWidth, dynamicBody.baseHeight };
+				Rectangle dynamicHitbox = (Rectangle){ dynamicPosition->x, dynamicPosition->y, dynamicBody.width, dynamicBody.height };
 
 				if (CheckCollisionRecs(staticHitbox, dynamicHitbox))
 				{
@@ -54,20 +54,20 @@ static void RunCollisionSimulations(ecs_iter_t* it, WorldPosition* dynamicPositi
 						{
 
 							// bottom collision
-							if (deltaY < 0 && velocity->yVelocity > 0.0f)
+							if (deltaY < 0 && velocity->y > 0.0f)
 							{
 								// snap to position
-								dynamicPosition->y = staticHitbox.y - dynamicBody.baseHeight;
-								velocity->yVelocity = 0;
+								dynamicPosition->y = staticHitbox.y - dynamicBody.height;
+								velocity->y = 0;
 								continue;
 							}
 
 							// top collision
-							if (deltaY > 0 && velocity->yVelocity < 0.0f)
+							if (deltaY > 0 && velocity->y < 0.0f)
 							{
 								// snap to position
 								dynamicPosition->y = staticHitbox.y + staticHitbox.height;
-								velocity->yVelocity = 0;
+								velocity->y = 0;
 								continue;
 							}
 
@@ -76,20 +76,20 @@ static void RunCollisionSimulations(ecs_iter_t* it, WorldPosition* dynamicPositi
 						if (abs(deltaX) > abs(deltaY))
 						{
 							// right side collision
-							if (deltaX < 0 && velocity->xVelocity > 0.0f)
+							if (deltaX < 0 && velocity->x> 0.0f)
 							{
 								// snap to position
-								dynamicPosition->x = staticHitbox.x - dynamicBody.baseWidth;
-								velocity->xVelocity = 0;
+								dynamicPosition->x = staticHitbox.x - dynamicBody.width;
+								velocity->x = 0;
 								continue;
 							}
 
 							// left side collision
-							if (deltaX > 0 && velocity->xVelocity < 0.0f)
+							if (deltaX > 0 && velocity->x < 0.0f)
 							{
 								// snap to position
 								dynamicPosition->x = staticHitbox.x + staticHitbox.width;
-								velocity->xVelocity = 0;
+								velocity->x = 0;
 								continue;
 							}
 						}
