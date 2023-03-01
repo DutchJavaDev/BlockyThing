@@ -44,65 +44,66 @@ typedef struct
 
 int main(void)
 {
-    FILE *ffp;
-    ffp = fopen("auril_home.tf.0.tfn.bin", "rb");
+    // FILE *ffp;
+    // ffp = fopen("auril_home.tf.0.tfn.bin", "rb");
 
-    if (ffp == NULL)
-    {
-        printf("Yep ya boi failed ya!");
-        exit(-1);
-    }
-
-    Tile tile;
-    fseek(ffp,sizeof(Tile) * 1,0);
-    fread(&tile, sizeof(Tile), 1, ffp);
-    printf("tileId %i\n", tile.id);
-    printf("x %i\n", tile.xPosition);
-    printf("y %i\n", tile.yPosition);
-
-    fclose(ffp);
-
-    // FILE *fp;
-
-    // TileSet set;
-
-    // fp = fopen("auril_home.wf.bin", "rb");
-
-    // if (fp == NULL)
+    // if (ffp == NULL)
     // {
-    //     printf("Error opening file.\n");
-    //     return 1;
+    //     printf("Yep ya boi failed ya!");
+    //     exit(-1);
     // }
 
-    // WorldData data = {0};
+    // Tile tile;
+    // fseek(ffp,sizeof(Tile) * 1,0);
+    // fread(&tile, sizeof(Tile), 1, ffp);
+    // printf("tileId %i\n", tile.id);
+    // printf("x %i\n", tile.xPosition);
+    // printf("y %i\n", tile.yPosition);
 
-    // while (fread(&data,sizeof(WorldData),1,fp))
-    // {
-    //     printf("%i\n",data.tileWidth);
-    //     printf("%i\n",data.tileHeigt);
+    // fclose(ffp);
 
-    //     FILE* map;
+    FILE *fp;
 
-    //     map = fopen(data.worldTileFile,"rb");
+    TileSet set;
 
-    //     if(map == NULL)
-    //     {
-    //         printf("Error opening file.\n");
-    //         break;
-    //     }
+    fp = fopen("auril_home.wf.bin", "rb");
 
-    //     Tile tile;
-    //     while (fread(&tile, sizeof(Tile),1,map))
-    //     {
-    //         printf("tileId %i\n", tile.id);
-    //         printf("x %i\n", tile.xPosition);
-    //         printf("y %i\n", tile.yPosition);
-    //     }
+    if (fp == NULL)
+    {
+        printf("Error opening file.\n");
+        return 1;
+    }
 
-    //     fclose(map);
-    //     }
+    WorldData data = {0};
 
-    // fclose(fp);
+    while (fread(&data,sizeof(WorldData),1,fp))
+    {
+        // printf("%i\n",data.tileWidth);
+        // printf("%i\n",data.tileHeigt);
+
+        FILE* map;
+
+        map = fopen(data.worldTileFile,"rb");
+
+        if(map == NULL)
+        {
+            printf("Error opening file.\n");
+            break;
+        }
+
+        printf("%s\n", data.worldTileFile);
+        Tile tile;
+        while (fread(&tile, sizeof(Tile),1,map))
+        {
+            printf("tileId %i\n", tile.id);
+            printf("x %i\n", tile.xPosition);
+            printf("y %i\n", tile.yPosition);
+        }
+
+        fclose(map);
+        }
+
+    fclose(fp);
 
     return 0;
 }

@@ -10,7 +10,7 @@
 #include "flecs.h"
 #include "ecs_components.h"
 #include "ecs_systems.h"
-#include "tiles.h"
 #include "game_init.h"
+#include "tile_manager.h"
 #include "player.h"
 #include "collision.h"

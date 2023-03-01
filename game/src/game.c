@@ -63,7 +63,7 @@ int main(void)
 #endif
 	CloseWindow();          // Close window and OpenGL context
 	//--------------------------------------------------------------------------------------
-	UnloadRenderTexture(tileMapTexture);
+	FreeTileManager();
 	UnloadTexture(worldTileSet);
 	UnloadTexture(player);
 	ecs_fini(auril_world);
@@ -91,8 +91,8 @@ void Movement(ecs_iter_t* it)
 	{
 		Velocity* velocity = &velocityArray[i];
 		WorldPosition* position = &positionArray[i];
-		position->x += velocity->xVelocity;
-		position->y += velocity->yVelocity;
+		position->x += velocity->x;
+		position->y += velocity->y;
 	}
 }
 void CollisionDetection(ecs_iter_t* it)
@@ -120,7 +120,7 @@ void PlayerCamera(ecs_iter_t* it)
 {
 	WorldPosition* targetPosition = ecs_field(it, WorldPosition, 1);
 	DynamicBody* targetBody = ecs_field(it, DynamicBody, 2);
-	//CameraFollow(targetPosition, targetBody);
+	CameraFollow(targetPosition, targetBody);
 }
 
 void BeginRendering(ecs_iter_t* it)
@@ -128,8 +128,8 @@ void BeginRendering(ecs_iter_t* it)
 	BeginDrawing();
 	ClearBackground(BLACK);
 	BeginMode2D(playerCamera);
-	DrawTextureRec(tileMapTexture.texture, (Rectangle) { 0, 0, (float)tileMapTexture.texture.width, (float)-tileMapTexture.texture.height }, (Vector2) { 0, 0 }, WHITE);
-	EndMode2D(playerCamera);
+	RenderTiles();
+	EndMode2D();
 }
 
 void RenderPlayer(ecs_iter_t* it)
@@ -155,8 +155,8 @@ void RenderStaticHitBox(ecs_iter_t* it)
 		float parentCenterX = body.centerX;
 		float parentCenterY = body.centerY;
 
-		float hitBoxWidth = body.baseWidth * hitBoxMultiplier;
-		float hitBoxHeight = body.baseHeight * hitBoxMultiplier;
+		float hitBoxWidth = body.width * hitBoxMultiplier;
+		float hitBoxHeight = body.height * hitBoxMultiplier;
 		float hitBoxX = parentCenterX - hitBoxWidth / 2;
 		float hitBoxY = parentCenterY - hitBoxHeight / 2;
 
@@ -178,11 +178,11 @@ void RenderDynamicHitBox(ecs_iter_t* it)
 		WorldPosition position = positionArray[i];
 		DynamicBody body = dynamicBodyArray[i];
 
-		float parentCenterX = position.x + (body.baseWidth / 2.0f);
-		float parentCenterY = position.y + (body.baseHeight / 2.0f);
+		float parentCenterX = position.x + (body.width / 2.0f);
+		float parentCenterY = position.y + (body.height / 2.0f);
 
-		float hitBoxWidth = body.baseWidth * hitBoxMultiplier;
-		float hitBoxHeight = body.baseHeight * hitBoxMultiplier;
+		float hitBoxWidth = body.width * hitBoxMultiplier;
+		float hitBoxHeight = body.height * hitBoxMultiplier;
 		float hitBoxX = parentCenterX - hitBoxWidth / 2;
 		float hitBoxY = parentCenterY - hitBoxHeight / 2;
 
